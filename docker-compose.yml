@@ -1,0 +1,31 @@
+version: '3'
+services:
+
+  mongodb:
+    image: mongo:8.2.7
+    container_name: mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example_password
+      MONGO_INITDB_DATABASE: my_database
+    ports:
+      - "27017:27017"
+    volumes:
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: mongo-express
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example_password
+      ME_CONFIG_MONGODB_URL: mongodb://root:example_password@mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: pass
+    depends_on:
+      - mongodb

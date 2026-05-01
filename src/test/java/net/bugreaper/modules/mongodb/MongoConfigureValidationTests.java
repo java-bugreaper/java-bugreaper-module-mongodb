@@ -1,0 +1,27 @@
+package net.bugreaper.modules.mongodb;
+
+
+
+import org.hamcrest.core.StringContains;
+import org.junit.jupiter.api.Test;
+import testcontainers.MongoSetup;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+
+class MongoConfigureValidationTests {
+
+    @Test
+    void configMinusAwaitTest() {
+
+        MongoDb test = MongoSetup.getInstance().getMongo();
+
+        Throwable exception = assertThrows(IllegalArgumentException.class, () ->
+                test.setAwaitMs(-1));
+
+        assertThat(
+                exception.getMessage(),
+                StringContains.containsString("awaitMs too small (can`t bee less 200ms)"));
+    }
+}
