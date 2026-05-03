@@ -49,7 +49,7 @@ class MangoAssertsCatchTest {
 
         MatcherAssert.assertThat(
                 exception.getMessage(),
-                StringContains.containsString(String.format("Collection <%s> expected to be not empty but has no records within 400 milliseconds", COLLECTION)));
+                StringContains.containsString(String.format("Collection <%s> expected to be not empty but got no records within 400 milliseconds", COLLECTION)));
     }
 
 
