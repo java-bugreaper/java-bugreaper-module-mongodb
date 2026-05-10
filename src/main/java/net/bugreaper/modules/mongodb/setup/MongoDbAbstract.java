@@ -6,18 +6,30 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import net.bugreaper.core.assertable.AssertableStringList;
 import net.bugreaper.core.mappers.StringMappers;
 import net.bugreaper.modules.mongodb.exceptions.MongoDBHelperException;
 import net.bugreaper.modules.mongodb.logger.Log;
 import net.bugreaper.modules.mongodb.matcher.JsonMatcher;
 import org.apache.commons.lang3.StringUtils;
+import org.awaitility.core.ConditionTimeoutException;
 import org.bson.Document;
+import org.bson.json.JsonMode;
+import org.bson.json.JsonWriterSettings;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import static com.mongodb.client.model.Sorts.descending;
 import static net.bugreaper.core.allurereporter.AllureReporter.attachFromList;
+import static net.bugreaper.core.assertions.Asserts.assertGreaterThanExpected;
+import static net.bugreaper.core.assertions.Asserts.assertIntEquals;
+import static net.bugreaper.core.mappers.StringMappers.formatMilliseconds;
+import static net.bugreaper.core.mappers.StringMappers.listToString;
+import static net.bugreaper.core.utils.AwaitUtils.awaitCustom;
 import static org.junit.jupiter.api.Assertions.fail;
 
 @SuppressWarnings("squid:S5960")
@@ -31,6 +43,12 @@ public abstract class MongoDbAbstract {
      */
     protected int awaitMs = 2000;
 
+    /**
+     * Default pagination limit for retrieving the N most recent records from the end of a collection.
+     * This value is used to optimize test data assertions, grab data, show data.
+     * Increasing this limit may affect performance if used in high-throughput queries within test suites.
+     */
+    protected int maxLastRecords = 50;
 
     protected MongoDbAbstract(String connectionString, String dbName) {
 
@@ -45,7 +63,7 @@ public abstract class MongoDbAbstract {
                         builder.connectTimeout(2000, TimeUnit.MILLISECONDS))
                 .applyToConnectionPoolSettings(builder ->
                         builder
-                                .maxSize(5)
+                                .maxSize(10)
                                 .minSize(2)
                                 .maxWaitTime(2000, TimeUnit.MILLISECONDS)
                 )
@@ -86,6 +104,37 @@ public abstract class MongoDbAbstract {
                 .getCollection(StringUtils.substringAfter(collectionName, "."));
     }
 
+    protected AssertableStringList grabDocumentsFromCollectionMethod(String collectionName) {
+
+        seeCollectionIsNotEmptyMethod(collectionName);
+        preCheckDocumentsCount(collectionName);
+
+        JsonWriterSettings pretty = JsonWriterSettings.builder()
+                .indent(true)
+                .outputMode(JsonMode.RELAXED)
+                .build();
+
+        List<String> actualList = new ArrayList<>();
+
+        getCollection(collectionName)
+                .find()
+                .sort(descending("_id")) // get latest first
+                .limit(maxLastRecords)
+                .forEach(doc -> actualList.add(doc.toJson(pretty)));
+
+        // reverse -> oldest -> newest
+        Collections.reverse(actualList);
+
+        if (Log.LOGGER.isDebugEnabled()) {
+            Log.LOGGER.debug("List of messages: {}", listToString(actualList));
+        }
+
+        Log.LOGGER.info("Documents grabbed from collection <{}>: {}", collectionName, actualList.size());
+        attachFromList(String.format("Documents(%d) list:", actualList.size()), actualList);
+
+        return new AssertableStringList(actualList);
+    }
+
     protected void assertRecordExists(String collectionName,
                                       String json,
                                       boolean strict) {
@@ -94,14 +143,21 @@ public abstract class MongoDbAbstract {
         MongoCollection<Document> collection = getCollection(collectionName);
         List<String> errors = new ArrayList<>();
 
+
+
         if (Log.LOGGER.isDebugEnabled()) {
-            Log.LOGGER.debug("In collection <{}> fount {} records", collectionName, collection.countDocuments());
+            Log.LOGGER.debug("In collection <{}> found {} documents", collectionName, collection.countDocuments());
         }
 
+        preCheckDocumentsCount(collectionName);
+
         int cnt = 0;
-        for (Document actual : collection.find()) {
+        for (Document actual : collection.find().sort(descending("_id"))) {
             try {
                 cnt++;
+
+                if(cnt > maxLastRecords){break;}
+
                 JsonMatcher.assertMatches(cnt, expected, actual, strict);
                 return;
             } catch (AssertionError error) {
@@ -114,6 +170,9 @@ public abstract class MongoDbAbstract {
             str = "STRICT";
         }
 
+        // reverse -> oldest -> newest (for debugging and report)
+        Collections.reverse(errors);
+
         //Allure attach
         if (cnt != 0) {
             attachFromList("Differences:", errors);
@@ -125,4 +184,60 @@ public abstract class MongoDbAbstract {
 
     }
 
+    protected int getRecordsCountInCollectionMethod(String collectionName){
+        return (int) getCollection(collectionName).countDocuments();
+    }
+
+    protected void seeRecordsCountInCollectionExactlyMethod(String collectionName, int expectedCount) {
+
+        try {
+            awaitCustom(awaitMs).untilAsserted(() ->
+                    assertIntEquals(expectedCount, getRecordsCountInCollectionMethod(collectionName)));
+
+        } catch (ConditionTimeoutException e) {
+            fail(
+                    MessageFormat.format(
+                            "Count records from collection <{0}> expected to be EXACTLY <{1}> but got <{2}> within {3}",
+                            collectionName, expectedCount, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(awaitMs)));
+        }
+
+    }
+
+    protected void seeCollectionIsEmptyMethod(String collectionName) {
+
+        try {
+            awaitCustom(awaitMs).untilAsserted(() ->
+                    assertIntEquals(0, getRecordsCountInCollectionMethod(collectionName)));
+
+        } catch (ConditionTimeoutException e) {
+            fail(
+                    MessageFormat.format(
+                            "Collection <{0}> expected to be empty but got <{1}> records within {2}",
+                            collectionName, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(awaitMs)));
+        }
+
+    }
+
+    protected void seeCollectionIsNotEmptyMethod(String collectionName) {
+
+        try {
+            awaitCustom(awaitMs).untilAsserted(() ->
+                    assertGreaterThanExpected(0, getRecordsCountInCollectionMethod(collectionName)));
+        } catch (ConditionTimeoutException e) {
+            fail(
+                    MessageFormat.format(
+                            "Collection <{0}> expected to be not empty but got no records within {1}",
+                            collectionName, formatMilliseconds(awaitMs)));
+        }
+
+    }
+
+
+    private void preCheckDocumentsCount(String collectionName){
+        if(getRecordsCountInCollectionMethod(collectionName) > maxLastRecords){
+            Log.LOGGER.warn("""
+                    Count of documents in collection <{}>: more than maxLastRecords({}) in config
+                    only last documents will be taken into account (can be changed by .setMaxLastRecords(int) or config 'documents-max-count')""", collectionName, maxLastRecords);
+        }
+    }
 }

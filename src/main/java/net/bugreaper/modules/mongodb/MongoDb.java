@@ -2,24 +2,17 @@ package net.bugreaper.modules.mongodb;
 
 import io.qameta.allure.Param;
 import io.qameta.allure.Step;
+import net.bugreaper.core.assertable.AssertableStringList;
 import net.bugreaper.core.config.YamlUtils;
 import net.bugreaper.modules.mongodb.interfaces.MongoDbAsserts;
 import net.bugreaper.modules.mongodb.interfaces.MongoDbConf;
 import net.bugreaper.modules.mongodb.interfaces.MongoDbInter;
 import net.bugreaper.modules.mongodb.logger.Log;
 import net.bugreaper.modules.mongodb.setup.MongoDbAbstract;
-import org.awaitility.core.ConditionTimeoutException;
 import org.bson.Document;
-
-import java.text.MessageFormat;
 
 import static io.qameta.allure.model.Parameter.Mode.HIDDEN;
 import static net.bugreaper.core.allurereporter.AllureReporter.attachCanBeNull;
-import static net.bugreaper.core.assertions.Asserts.assertGreaterThanExpected;
-import static net.bugreaper.core.assertions.Asserts.assertIntEquals;
-import static net.bugreaper.core.mappers.StringMappers.formatMilliseconds;
-import static net.bugreaper.core.utils.AwaitUtils.awaitCustom;
-import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Class consists methods that operate with MongoDb
@@ -32,7 +25,6 @@ import static org.junit.jupiter.api.Assertions.fail;
  * @author Oleksii Betin "ambu550"
  * @since 1.0.0
  */
-@SuppressWarnings("squid:S5960")
 public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAsserts, MongoDbConf {
 
     private static MongoDb instance;
@@ -43,9 +35,13 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
     }
 
     /**
-     * Run {@link #MongoDb()} from config in one instance
+     * Returns the instance of {@link MongoDb} with config builder {@link #MongoDb()}.
+     * <p>
+     * This implementation is thread-safe using method-level synchronization.
+     *
+     * @return the singleton instance of {@link MongoDb}
      */
-    public static MongoDb getInstance() {
+    public static synchronized MongoDb getInstance() {
         if (instance == null) {
             instance = new MongoDb();
         }
@@ -85,6 +81,11 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
         if (awaitVal instanceof Number number) {
             setAwaitMs(number.intValue());
         }
+        Object maxDoc = YamlUtils.getValueByPath("modules.mongodb.documents-max-count", true);
+        if (maxDoc instanceof Number number) {
+            setMaxLastRecords(number.intValue());
+        }
+
     }
 
     // Setters/getters
@@ -99,13 +100,23 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
     }
 
     @Override
+    public MongoDb setMaxLastRecords(int maxLastRecords) {
+        if (maxLastRecords < 1) {
+            throw new IllegalArgumentException("maxLastRecords too small (can`t bee less 1)");
+        }
+        this.maxLastRecords = maxLastRecords;
+        return this;
+    }
+
+    @Override
     public String getConfigSummary() {
         String info = String.format("""
                         %s:
                             url=%s
                             default_database=%s
-                            awaitMs=%d%n""",
-                this.getClass().getSimpleName(), connectionString, defaultDatabase.getName(), awaitMs);
+                            awaitMs=%d
+                            maxLastRecords=%d%n""",
+                this.getClass().getSimpleName(), connectionString, defaultDatabase.getName(), awaitMs, maxLastRecords);
 
         Log.LOGGER.info(info);
         return info;
@@ -133,58 +144,32 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
     @Override
     // no step
     public int getRecordsCountInCollection(String collectionName) {
-        return (int) getCollection(collectionName).countDocuments();
+        return getRecordsCountInCollectionMethod(collectionName);
+    }
+
+    @Override
+    @Step("(MongoDb) Grab documents from collection: {collectionName}")
+    public AssertableStringList grabDocumentsFromCollection(String collectionName) {
+        return grabDocumentsFromCollectionMethod(collectionName);
     }
 
     // Asserts
     @Override
     @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has exactly {expectedCount} records")
     public void seeRecordsCountInCollectionExactly(String collectionName, int expectedCount) {
-
-        try {
-            awaitCustom(awaitMs).untilAsserted(() ->
-                    assertIntEquals(expectedCount, getRecordsCountInCollection(collectionName)));
-
-        } catch (ConditionTimeoutException e) {
-            fail(
-                    MessageFormat.format(
-                            "Count records from collection <{0}> expected to be EXACTLY <{1}> but got <{2}> within {3}",
-                            collectionName, expectedCount, getRecordsCountInCollection(collectionName), formatMilliseconds(awaitMs)));
-        }
-
+        seeRecordsCountInCollectionExactlyMethod(collectionName, expectedCount);
     }
 
     @Override
     @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> is not empty")
     public void seeCollectionIsEmpty(String collectionName) {
-
-        try {
-            awaitCustom(awaitMs).untilAsserted(() ->
-                    assertIntEquals(0, getRecordsCountInCollection(collectionName)));
-
-        } catch (ConditionTimeoutException e) {
-            fail(
-                    MessageFormat.format(
-                            "Collection <{0}> expected to be empty but got <{1}> records within {2}",
-                            collectionName, getRecordsCountInCollection(collectionName), formatMilliseconds(awaitMs)));
-        }
-
+        seeCollectionIsEmptyMethod(collectionName);
     }
 
     @Override
     @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> is empty")
     public void seeCollectionIsNotEmpty(String collectionName) {
-
-        try {
-            awaitCustom(awaitMs).untilAsserted(() ->
-                    assertGreaterThanExpected(0, getRecordsCountInCollection(collectionName)));
-        } catch (ConditionTimeoutException e) {
-            fail(
-                    MessageFormat.format(
-                            "Collection <{0}> expected to be not empty but got no records within {1}",
-                            collectionName, formatMilliseconds(awaitMs)));
-        }
-
+        seeCollectionIsNotEmptyMethod(collectionName);
     }
 
     @Override
