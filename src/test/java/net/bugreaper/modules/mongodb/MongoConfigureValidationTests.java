@@ -24,4 +24,18 @@ class MongoConfigureValidationTests {
                 exception.getMessage(),
                 StringContains.containsString("awaitMs too small (can`t bee less 200ms)"));
     }
+
+    @Test
+    void setMaxLastRecords() {
+
+        MongoDb test = MongoSetup.getInstance().getMongo();
+
+        Throwable exception = assertThrows(IllegalArgumentException.class, () ->
+                test.setMaxLastRecords(0));
+
+        assertThat(
+                exception.getMessage(),
+                StringContains.containsString("maxLastRecords too small (can`t bee less 1)"));
+    }
+
 }

@@ -1,21 +1,32 @@
 package net.bugreaper.modules.mongodb;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import helpers.MemoryAppender;
+import org.hamcrest.core.StringContains;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import testcontainers.MongoSetup;
 
 import java.util.concurrent.CompletableFuture;
 
 import static java.lang.Thread.sleep;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static testcontainers.MongoSetup.expectedUrl;
 
 @SuppressWarnings("squid:S2699")
-class MangoBasicTest {
+class MongoBasicTest {
 
     MongoDb mg = MongoSetup.getInstance().getMongo();
 
     private static final String COLLECTION = "users";
+
+    private static final MemoryAppender memoryAppender = new MemoryAppender();
+    private static final  String LOGGER_NAME = "bugreaper-module-mongodb";
     
     @BeforeEach
     void clean(){
@@ -41,7 +52,7 @@ class MangoBasicTest {
 
         mg.seeCollectionIsNotEmpty(COLLECTION);
         mg.seeRecordsCountInCollectionExactly(COLLECTION, 1);
-
+        assertEquals(1, mg.getRecordsCountInCollection(COLLECTION));
     }
 
     @Test
@@ -201,6 +212,22 @@ class MangoBasicTest {
 
 
     @Test
+    void insertAndAssertsCollectionWithDotTest(){
+
+        mg.cleanCollection("test_db.my.collect");
+
+        mg.insertIntoCollection(
+                "test_db.my.collect",
+                """
+                        {
+                            "name": "Alex2",
+                        }"""
+        );
+
+        mg.seeRecordsCountInCollectionExactly("test_db.my.collect", 1);
+    }
+
+    @Test
     void equalRecordsTest(){
 
 
@@ -250,6 +277,103 @@ class MangoBasicTest {
     }
 
     @Test
+    void grabRecordsAndAssertTest(){
+
+        mg.insertIntoCollection(
+                COLLECTION,
+                """
+                        {name: 'Alex', "age": 26}"""
+        );
+
+        mg.insertIntoCollection(
+                COLLECTION,
+                """
+                        {"name": "Anna", "age": 25}"""
+        );
+
+        mg.grabDocumentsFromCollection(COLLECTION)
+                .seeListHasExactlyCount(2)
+                .seeListAnyContainsJson( """
+                        {"name": "Alex", "age": 26}""")
+                .seeListAnyContainsExtendedJson( """
+                        {"name:like": "An", "age:<": 26}""");
+
+    }
+
+    @Test
+    void testCountConsumedMessagesLog() {
+
+        Logger logger = (Logger) LoggerFactory.getLogger(LOGGER_NAME);
+        logger.setLevel(Level.WARN);
+        logger.addAppender(memoryAppender);
+
+        memoryAppender.setContext((LoggerContext) LoggerFactory.getILoggerFactory());
+        memoryAppender.start();
+
+
+        MongoDb mgSize = MongoSetup.getInstance().getMongo().setMaxLastRecords(2);
+
+        mgSize.insertIntoCollection(
+                COLLECTION,"""
+                        {name: 'Alex', "age": 26}"""
+        );
+        mgSize.insertIntoCollection(
+                COLLECTION,"""
+                        {"name": "Anna", "age": 25}"""
+        );
+        mgSize.insertIntoCollection(
+                COLLECTION,"""
+                        {"name": "Max", "age": 33}"""
+        );
+
+
+        mgSize.seeRecordsCountInCollectionExactly(COLLECTION, 3);
+
+        mgSize.seeRecordPartExistsInCollection(
+                COLLECTION,"""
+                         {"age": 25}"""
+        );
+
+        mgSize.seeRecordPartExistsInCollection(
+                COLLECTION,"""
+                         {"age": 33}"""
+        );
+
+        assertThrows(AssertionError.class, () ->
+                mgSize.seeRecordPartExistsInCollection(
+                        COLLECTION,"""
+                         {"age": 26}"""
+                ));
+
+        String expectedLog = String.format("Count of documents in collection <%s>: more than maxLastRecords(%d) in config", COLLECTION, 2);
+
+        assertThat(
+                "Check WARN",
+                memoryAppender.getLoggedEvents().toString(),
+                StringContains.containsString(expectedLog));
+
+        memoryAppender.reset();
+
+       var result =  mgSize.grabDocumentsFromCollection(COLLECTION)
+                .seeListHasExactlyCount(2)
+                .seeListAnyContainsExtendedJson("""
+                        {"age:>=": 30}""")
+                .seeListAnyContainsExtendedJson(
+                        """
+                        {"age:=": 25}""");
+
+        assertThrows(AssertionError.class, () ->
+                result.seeListAnyContainsJson("""
+                          {"age": 26}"""
+                ));
+
+        assertThat(
+                "Check WARN",
+                memoryAppender.getLoggedEvents().toString(),
+                StringContains.containsString(expectedLog));
+    }
+
+    @Test
     void configCheckBasicTest(){
 
         MongoDb mongo = MongoDb.getInstance();
@@ -278,6 +402,7 @@ class MangoBasicTest {
                             url=%s
                             default_database=test_db
                             awaitMs=2000
+                            maxLastRecords=50
                         """, expectedUrl),
                 mg.getConfigSummary());
     }
@@ -292,6 +417,7 @@ class MangoBasicTest {
                             url=%s
                             default_database=test_db
                             awaitMs=420
+                            maxLastRecords=15
                         """, expectedUrl),
                 mongo.getConfigSummary());
     }

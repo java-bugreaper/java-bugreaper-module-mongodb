@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SuppressWarnings("java:S5976")
-class MangoAssertsCatchTest {
+class MongoAssertsCatchTest {
 
     MongoDb mg = MongoSetup.getInstance().getMongo().setAwaitMs(400);
     private static final String COLLECTION = "test-collection";
@@ -154,19 +154,19 @@ class MangoAssertsCatchTest {
                         Differences:
                         [
                         
-                        --- Actual #1---
+                        --- Actual #2---
                         {
                           "name": "Alex",
                           "age": 25
                         }
                         --- Differences ---
                          • age: unexpected field
-                                                
-                                                
+                        
+                        
                         -----------
-                                                
-                                                
-                        --- Actual #2---
+                        
+                        
+                        --- Actual #1---
                         {
                           "names": "many"
                         }
@@ -287,7 +287,7 @@ class MangoAssertsCatchTest {
                         }
                         Differences:
                         [
-                                                
+                        
                         --- Actual #1---
                         {
                           "user": {
@@ -301,7 +301,7 @@ class MangoAssertsCatchTest {
                         }
                         --- Differences ---
                          • user.array: array size mismatch. expected 2 but was 3
-                                                
+                        
                         ]""",COLLECTION),
                 exception.getMessage());
     }
@@ -344,7 +344,7 @@ class MangoAssertsCatchTest {
                         }
                         Differences:
                         [
-                                                
+                        
                         --- Actual #1---
                         {
                           "user": {
@@ -359,11 +359,67 @@ class MangoAssertsCatchTest {
                         --- Differences ---
                          • user.array[1]: expected [27] but was [26]
                          • user.array[2]: expected [28] but was [27]
-                                                
+                        
                         ]""",COLLECTION),
                 exception.getMessage());
     }
 
+    @Test
+    void equalRecordWithArrayDataFailed2Test() {
+
+        mg.cleanCollection(COLLECTION);
+
+        mg.insertIntoCollection(
+                COLLECTION,
+                """
+                        {
+                             "user": {
+                                "name": "Alex",
+                                "array": ["25", "27", "28"]
+                            }
+                        }"""
+        );
+
+        Throwable exception = assertThrows(AssertionError.class, () ->
+                mg.seeRecordPartExistsInCollection(
+                        COLLECTION,
+                        """
+                        {
+                             "user": {
+                                "name": "Alex",
+                                "array": ["25", "29"]
+                            }
+                        }"""
+                ));
+
+        assertEquals(String.format("""
+                        No CONTAINS matching found in collection <%s> 1 actual documents for:
+                        {
+                             "user": {
+                                "name": "Alex",
+                                "array": ["25", "29"]
+                            }
+                        }
+                        Differences:
+                        [
+                        
+                        --- Actual #1---
+                        {
+                          "user": {
+                            "name": "Alex",
+                            "array": [
+                              "25",
+                              "27",
+                              "28"
+                            ]
+                          }
+                        }
+                        --- Differences ---
+                         • user.array: array does not contain 29
+                        
+                        ]""",COLLECTION),
+                exception.getMessage());
+    }
 
     @Test
     void equalRecordWithArrayOrderFailedTest() {
@@ -403,7 +459,7 @@ class MangoAssertsCatchTest {
                         }
                         Differences:
                         [
-                                                
+                        
                         --- Actual #1---
                         {
                           "user": {
@@ -418,7 +474,7 @@ class MangoAssertsCatchTest {
                         --- Differences ---
                          • user.array[0]: expected [27] but was [25]
                          • user.array[2]: expected [25] but was [27]
-                                                
+                        
                         ]""",COLLECTION),
                 exception.getMessage());
     }

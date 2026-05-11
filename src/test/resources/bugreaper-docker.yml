@@ -3,3 +3,4 @@ modules:
     url: 'mongodb://root:example_password@docker:27017'
     database: test_db
     await: 420 # optional
+    documents-max-count: 15 # optional

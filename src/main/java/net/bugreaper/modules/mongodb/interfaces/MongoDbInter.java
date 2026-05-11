@@ -1,6 +1,11 @@
 package net.bugreaper.modules.mongodb.interfaces;
 
+import net.bugreaper.core.assertable.AssertableStringList;
 
+/**
+ * Interface defines methods for facilitating helper interactions.
+ * Validates that all required methods are implemented.
+ */
 public interface MongoDbInter {
 
     /**
@@ -40,5 +45,18 @@ public interface MongoDbInter {
      * @return int with messages count
      */
     int getRecordsCountInCollection(String collectionName);
+
+    /**
+     * Grab documents to list
+     * <p> max count of documents set in config (grab last documents)</p>
+     * <p><b>wait for first Document</b>
+     *
+     * @param collectionName collection name
+     * @return  {@link AssertableStringList}
+     *
+     * <p> EXAMPLE:
+     * {@code grabDocumentsFromCollection("my_collection").seeListHasExactlyCount(4); }
+     */
+    AssertableStringList grabDocumentsFromCollection(String collectionName);
 
 }

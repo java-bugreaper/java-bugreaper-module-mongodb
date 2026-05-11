@@ -3,6 +3,10 @@ package net.bugreaper.modules.mongodb.interfaces;
 
 import net.bugreaper.modules.mongodb.matcher.JsonMatcher;
 
+/**
+ * Interface describes methods responsible for helper assertions.
+ * Validates that all required methods are implemented.
+ */
 public interface MongoDbAsserts {
 
    /**

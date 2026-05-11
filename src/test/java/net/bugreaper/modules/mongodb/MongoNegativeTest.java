@@ -9,7 +9,7 @@ import testcontainers.MongoSetup;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class MangoNegativeTest {
+class MongoNegativeTest {
 
     MongoDb mg = MongoSetup.getInstance().getMongo();
 
