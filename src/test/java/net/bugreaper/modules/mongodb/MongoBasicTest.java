@@ -1,33 +1,42 @@
 package net.bugreaper.modules.mongodb;
 
 import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.LoggerContext;
-import helpers.MemoryAppender;
-import org.hamcrest.core.StringContains;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.slf4j.LoggerFactory;
+import com.fasterxml.jackson.databind.JsonNode;
+import net.bugreaper.core.utils.AllureAssert;
+import net.bugreaper.core.utils.AllureResultLoader;
+import net.bugreaper.core.utils.LogWatcher;
+import org.hamcrest.MatcherAssert;
+import org.junit.jupiter.api.*;
 import testcontainers.MongoSetup;
 
 import java.util.concurrent.CompletableFuture;
 
 import static java.lang.Thread.sleep;
-import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.matchesRegex;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static testcontainers.MongoSetup.expectedUrl;
 
 @SuppressWarnings("squid:S2699")
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class MongoBasicTest {
 
     MongoDb mg = MongoSetup.getInstance().getMongo();
 
     private static final String COLLECTION = "users";
 
-    private static final MemoryAppender memoryAppender = new MemoryAppender();
-    private static final  String LOGGER_NAME = "bugreaper-module-mongodb";
-    
+    private LogWatcher logWatcher;
+    @BeforeEach
+    void setup() {
+        logWatcher = new LogWatcher("bugreaper-module-mongodb", Level.DEBUG);
+    }
+
+    @AfterEach
+    void teardown() {
+        logWatcher.detach();
+    }
+
+
     @BeforeEach
     void clean(){
         mg.cleanCollection(COLLECTION);
@@ -298,18 +307,16 @@ class MongoBasicTest {
                 .seeListAnyContainsExtendedJson( """
                         {"name:like": "An", "age:<": 26}""");
 
+        assertEquals(
+                String.format("[[INFO] Documents grabbed from collection <%s>: 2]", COLLECTION),
+                logWatcher.getLoggedEvents(Level.INFO).toString());
+
+
     }
 
     @Test
+    @Order(1)
     void testCountConsumedMessagesLog() {
-
-        Logger logger = (Logger) LoggerFactory.getLogger(LOGGER_NAME);
-        logger.setLevel(Level.WARN);
-        logger.addAppender(memoryAppender);
-
-        memoryAppender.setContext((LoggerContext) LoggerFactory.getILoggerFactory());
-        memoryAppender.start();
-
 
         MongoDb mgSize = MongoSetup.getInstance().getMongo().setMaxLastRecords(2);
 
@@ -329,14 +336,31 @@ class MongoBasicTest {
 
         mgSize.seeRecordsCountInCollectionExactly(COLLECTION, 3);
 
-        mgSize.seeRecordPartExistsInCollection(
+        mgSize.seeRecordExistsInCollection(
                 COLLECTION,"""
-                         {"age": 25}"""
+                        {"name": "Anna", "age": 25}"""
         );
+        assertEquals(
+                """
+                [[WARN] Count of documents in collection <users>=3: more than maxLastRecords(2) in config
+                only last documents will be taken into account (can be changed by .setMaxLastRecords(int) or config 'documents-max-count')]""",
+                logWatcher.getLoggedEvents(Level.WARN).toString());
 
-        mgSize.seeRecordPartExistsInCollection(
+        assertEquals(
+                "[[INFO] In collection <users> found 3 documents]",
+                logWatcher.getLoggedEvents(Level.INFO).toString());
+
+        MatcherAssert.assertThat(
+                logWatcher.getLoggedEvents(Level.DEBUG).toString(),
+                matchesRegex("""
+                (?s)^\\[\\[DEBUG\\] Document for check:\\s*\
+                Document\\{\\{_id=[a-f0-9]{24}, name=Max, age=33\\}\\},\\s*\\[DEBUG\\] Document for check:\\s*\
+                Document\\{\\{_id=[a-f0-9]{24}, name=Anna, age=25\\}\\}\\]$\
+                """));
+
+        mgSize.seeRecordExistsInCollection(
                 COLLECTION,"""
-                         {"age": 33}"""
+                         {"name": "Max", "age": 33}"""
         );
 
         assertThrows(AssertionError.class, () ->
@@ -345,16 +369,7 @@ class MongoBasicTest {
                          {"age": 26}"""
                 ));
 
-        String expectedLog = String.format("Count of documents in collection <%s>: more than maxLastRecords(%d) in config", COLLECTION, 2);
-
-        assertThat(
-                "Check WARN",
-                memoryAppender.getLoggedEvents().toString(),
-                StringContains.containsString(expectedLog));
-
-        memoryAppender.reset();
-
-       var result =  mgSize.grabDocumentsFromCollection(COLLECTION)
+       var result = mgSize.grabDocumentsFromCollection(COLLECTION)
                 .seeListHasExactlyCount(2)
                 .seeListAnyContainsExtendedJson("""
                         {"age:>=": 30}""")
@@ -362,15 +377,55 @@ class MongoBasicTest {
                         """
                         {"age:=": 25}""");
 
+
         assertThrows(AssertionError.class, () ->
                 result.seeListAnyContainsJson("""
                           {"age": 26}"""
                 ));
+    }
+    @Test
+    @Order(2)
+    void allureForListCheck() {
+        JsonNode result = AllureResultLoader.loadByTestName("testCountConsumedMessagesLog");
 
-        assertThat(
-                "Check WARN",
-                memoryAppender.getLoggedEvents().toString(),
-                StringContains.containsString(expectedLog));
+        AllureAssert.assertThat(result)
+
+
+                .hasStep("(MongoDb)[ASSERT] Collection: <users> has record EQUAL to JSON")
+                .hasAttachment("Expected:", """
+                       {"name": "Anna", "age": 25}""")
+
+
+                .hasStep("(MongoDb)[ASSERT] Collection: <users> has record CONTAINS JSON")
+                .hasAttachment("Expected part:", """
+                        {"age": 26}""")
+                .hasAttachment("Differences:", """
+                        [
+                                                
+                        --- Actual #1---
+                        {
+                          "name": "Max",
+                          "age": 33
+                        }
+                        --- Differences ---
+                         • age: expected [26] but was [33]
+                                                
+                                                
+                        -----------
+                                                
+                                                
+                        --- Actual #2---
+                        {
+                          "name": "Anna",
+                          "age": 25
+                        }
+                        --- Differences ---
+                         • age: expected [26] but was [25]
+                                                
+                        ]""")
+
+                .hasStep("(MongoDb) Grab documents from collection: users")
+                .hasAttachment("Documents(2) list:");
     }
 
     @Test

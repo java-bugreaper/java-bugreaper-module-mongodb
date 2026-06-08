@@ -19,7 +19,6 @@ import org.bson.json.JsonWriterSettings;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -122,9 +121,6 @@ public abstract class MongoDbAbstract {
                 .limit(maxLastRecords)
                 .forEach(doc -> actualList.add(doc.toJson(pretty)));
 
-        // reverse -> oldest -> newest
-        Collections.reverse(actualList);
-
         if (Log.LOGGER.isDebugEnabled()) {
             Log.LOGGER.debug("List of messages: {}", listToString(actualList));
         }
@@ -145,18 +141,19 @@ public abstract class MongoDbAbstract {
 
 
 
-        if (Log.LOGGER.isDebugEnabled()) {
-            Log.LOGGER.debug("In collection <{}> found {} documents", collectionName, collection.countDocuments());
+        if (Log.LOGGER.isInfoEnabled()) {
+            Log.LOGGER.info("In collection <{}> found {} documents", collectionName, collection.countDocuments());
         }
 
         preCheckDocumentsCount(collectionName);
 
         int cnt = 0;
-        for (Document actual : collection.find().sort(descending("_id"))) {
+        // get latest first
+        for (Document actual : collection.find().sort(descending("_id")).limit(maxLastRecords) ) {
             try {
                 cnt++;
 
-                if(cnt > maxLastRecords){break;}
+                Log.LOGGER.debug("Document for check:\n{}", actual);
 
                 JsonMatcher.assertMatches(cnt, expected, actual, strict);
                 return;
@@ -169,9 +166,6 @@ public abstract class MongoDbAbstract {
         if (strict) {
             str = "STRICT";
         }
-
-        // reverse -> oldest -> newest (for debugging and report)
-        Collections.reverse(errors);
 
         //Allure attach
         if (cnt != 0) {
@@ -234,10 +228,13 @@ public abstract class MongoDbAbstract {
 
 
     private void preCheckDocumentsCount(String collectionName){
-        if(getRecordsCountInCollectionMethod(collectionName) > maxLastRecords){
+
+        int cnt =getRecordsCountInCollectionMethod(collectionName);
+
+        if(cnt > maxLastRecords){
             Log.LOGGER.warn("""
-                    Count of documents in collection <{}>: more than maxLastRecords({}) in config
-                    only last documents will be taken into account (can be changed by .setMaxLastRecords(int) or config 'documents-max-count')""", collectionName, maxLastRecords);
+                    Count of documents in collection <{}>={}: more than maxLastRecords({}) in config
+                    only last documents will be taken into account (can be changed by .setMaxLastRecords(int) or config 'documents-max-count')""", collectionName, cnt, maxLastRecords);
         }
     }
 }

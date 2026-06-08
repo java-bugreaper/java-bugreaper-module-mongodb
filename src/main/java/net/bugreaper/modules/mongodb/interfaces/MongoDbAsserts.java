@@ -41,6 +41,7 @@ public interface MongoDbAsserts {
      * Assert that exists at least one record CONTAINS JSON without strict order
      * <p><b>Extensible fields and elements in array <u>will be skipped</u></b></p>
      * <p>Wrap this method with collection name to provide only json</p>
+     * <p>max count of documents set in config (only the latest documents are checked sorted from the latest to the oldest)</p>
      *
      * <p>Usage Example:</p>
      * <pre>{@code
@@ -66,6 +67,7 @@ public interface MongoDbAsserts {
      * <p><b>Extensible fields and elements in arrays <u>not expected</u></b></p>
      * <b>Ignore Mongo auto-generated field {@link JsonMatcher#IGNORED_FIELD}</b>
      * <p>Wrap this method with collection name to provide only json</p>
+     * <p>max count of documents set in config (only the latest documents are checked sorted from the latest to the oldest)</p>
      *
      * <p>Usage Example:</p>
      * <pre>{@code

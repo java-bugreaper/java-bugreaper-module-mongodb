@@ -116,6 +116,61 @@ class MongoAssertsCatchTest {
     }
 
     @Test
+    void containsRecordsTest(){
+
+        MongoDb mgSize = MongoSetup.getInstance().getMongo().setMaxLastRecords(1);
+
+        mgSize.insertIntoCollection(
+                COLLECTION,
+                """
+                        {
+                            name: 'Anna',
+                            age: 33
+                        }"""
+        );
+
+        mgSize.insertIntoCollection(
+                COLLECTION,
+                """
+                        {
+                            name: 'Alex',
+                            age: 25
+                        }"""
+        );
+
+
+        String expected = """
+                        {
+                            name: 'Alex2'
+                        }""";
+
+        Throwable exception = assertThrows(AssertionError.class, () ->
+                mgSize.seeRecordPartExistsInCollection(
+                        COLLECTION,
+                        expected
+                ));
+
+        assertEquals(String.format("""
+                        No CONTAINS matching found in collection <%s> 1 actual documents for:
+                        {
+                            name: 'Alex2'
+                        }
+                        Differences:
+                        [
+            
+                        --- Actual #1---
+                        {
+                          "name": "Alex",
+                          "age": 25
+                        }
+                        --- Differences ---
+                         • name: expected [Alex2] but was [Alex]
+            
+                        ]""",COLLECTION),
+                exception.getMessage());
+    }
+
+    @Test
     void equalRecordTest(){
 
         mg.insertIntoCollection(
@@ -154,18 +209,6 @@ class MongoAssertsCatchTest {
                         Differences:
                         [
                         
-                        --- Actual #2---
-                        {
-                          "name": "Alex",
-                          "age": 25
-                        }
-                        --- Differences ---
-                         • age: unexpected field
-                        
-                        
-                        -----------
-                        
-                        
                         --- Actual #1---
                         {
                           "names": "many"
@@ -173,6 +216,18 @@ class MongoAssertsCatchTest {
                         --- Differences ---
                          • name: field missing
                          • names: unexpected field
+                        
+                        
+                        -----------
+                        
+                        
+                        --- Actual #2---
+                        {
+                          "name": "Alex",
+                          "age": 25
+                        }
+                        --- Differences ---
+                         • age: unexpected field
                         
                         ]""",COLLECTION),
                 exception.getMessage());
