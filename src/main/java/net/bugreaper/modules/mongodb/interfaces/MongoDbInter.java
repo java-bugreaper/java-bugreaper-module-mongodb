@@ -48,7 +48,7 @@ public interface MongoDbInter {
 
     /**
      * Grab documents to list
-     * <p> max count of documents set in config (grab last documents)</p>
+     * <p>max count of documents set in config (grab last documents sorted from the latest to the oldest)</p>
      * <p><b>wait for first Document</b>
      *
      * @param collectionName collection name
