@@ -5,10 +5,13 @@ import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.StringContains;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 import testcontainers.MongoSetup;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+
+@Isolated
 class MongoNegativeTest {
 
     MongoDb mg = MongoSetup.getInstance().getMongo();
@@ -21,6 +24,7 @@ class MongoNegativeTest {
 
     @Test
     void emptyCollectionTest(){
+
         Throwable exception = assertThrows(MongoDBHelperException.class, () ->
                 mg.insertIntoCollection(
                         "",
@@ -32,7 +36,7 @@ class MongoNegativeTest {
 
         MatcherAssert.assertThat(
                 exception.getMessage(),
-                StringContains.containsString("Collection can't be null or empty"));
+                StringContains.containsString("Failed to insert document: Collection can't be null or empty"));
     }
 
     @Test
@@ -49,7 +53,24 @@ class MongoNegativeTest {
 
         MatcherAssert.assertThat(
                 exception.getMessage(),
-                StringContains.containsString("Collection can't be null or empty"));
+                StringContains.containsString("Failed to insert document: Collection can't be null or empty"));
+    }
+
+    @Test
+    void arrayInsertTest(){
+
+        Throwable exception = assertThrows(MongoDBHelperException.class, () ->
+                mg.insertIntoCollection(
+                        "test",
+                        """
+                                [{
+                                    name: 'Alex'
+                                }]"""
+                ));
+
+        MatcherAssert.assertThat(
+                exception.getMessage(),
+                StringContains.containsString("Failed to insert document"));
     }
 
 }

@@ -205,7 +205,6 @@ public class JsonMatcher {
     }
 
 
-
     // Error message builder
 
     private static String buildError(int num,
@@ -214,7 +213,7 @@ public class JsonMatcher {
 
         StringBuilder sb = new StringBuilder();
 
-       actual.remove(IGNORED_FIELD);
+        actual.remove(IGNORED_FIELD);
 
         JsonWriterSettings pretty = JsonWriterSettings.builder()
                 .indent(true)

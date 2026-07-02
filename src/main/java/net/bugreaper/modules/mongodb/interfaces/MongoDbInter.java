@@ -49,7 +49,7 @@ public interface MongoDbInter {
     /**
      * Grab documents to list
      * <p>max count of documents set in config (grab last documents sorted from the latest to the oldest)</p>
-     * <p><b>wait for first Document</b>
+     * <p><b>await for at least one Document exist in collection</b>
      *
      * @param collectionName collection name
      * @return  {@link AssertableStringList}
