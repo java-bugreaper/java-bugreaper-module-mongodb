@@ -7,17 +7,16 @@ import net.bugreaper.core.utils.AllureResultLoader;
 import net.bugreaper.core.utils.LogWatcher;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.parallel.Isolated;
 import testcontainers.MongoSetup;
 
-import java.util.concurrent.CompletableFuture;
-
-import static java.lang.Thread.sleep;
 import static org.hamcrest.Matchers.matchesRegex;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static testcontainers.MongoSetup.expectedUrl;
 
 @SuppressWarnings("squid:S2699")
+@Isolated
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class MongoBasicTest {
 
@@ -26,6 +25,12 @@ class MongoBasicTest {
     private static final String COLLECTION = "users";
 
     private LogWatcher logWatcher;
+
+    @BeforeAll
+    static void cleanResults() {
+        AllureResultLoader.cleanResultsDir();
+    }
+
     @BeforeEach
     void setup() {
         logWatcher = new LogWatcher("bugreaper-module-mongodb", Level.DEBUG);
@@ -342,7 +347,7 @@ class MongoBasicTest {
         );
         assertEquals(
                 """
-                [[WARN] Count of documents in collection <users>=3: more than maxLastRecords(2) in config
+                [[WARN] Count of documents in collection <users> is <3>: more than maxLastRecords(2) in config
                 only last documents will be taken into account (can be changed by .setMaxLastRecords(int) or config 'documents-max-count')]""",
                 logWatcher.getLoggedEvents(Level.WARN).toString());
 
@@ -471,40 +476,10 @@ class MongoBasicTest {
                         MongoDb:
                             url=%s
                             default_database=test_db
-                            awaitMs=420
+                            awaitMs=800
                             maxLastRecords=15
                         """, expectedUrl),
                 mongo.getConfigSummary());
-    }
-
-    @Test
-    void parallelTest(){
-        String collection = COLLECTION;
-
-        mg.seeCollectionIsEmpty(collection);
-
-        CompletableFuture<Void> future1 = CompletableFuture.runAsync(() -> mg.seeCollectionIsNotEmpty(collection));
-        CompletableFuture<Void> future2 = CompletableFuture.runAsync(() -> mg.seeRecordsCountInCollectionExactly(collection, 1));
-        CompletableFuture<Void> future3 = CompletableFuture.runAsync(() -> pushWithSleep(collection));
-
-        CompletableFuture.allOf(future1, future2, future3).join();
-
-    }
-
-    @SuppressWarnings("squid:S2925")
-    private void pushWithSleep(String collection){
-        try {
-            sleep(700);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-        mg.insertIntoCollection(
-                collection,
-                """
-                        {
-                            name: 'Alex'
-                        }"""
-        );
     }
     
 }

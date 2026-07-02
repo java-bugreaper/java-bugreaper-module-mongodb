@@ -4,12 +4,14 @@ package net.bugreaper.modules.mongodb;
 
 import org.hamcrest.core.StringContains;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 import testcontainers.MongoSetup;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 
+@Isolated
 class MongoConfigureValidationTests {
 
     @Test

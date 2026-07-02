@@ -4,12 +4,14 @@ import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.StringContains;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
 import testcontainers.MongoSetup;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SuppressWarnings("java:S5976")
+@Isolated
 class MongoAssertsCatchTest {
 
     MongoDb mg = MongoSetup.getInstance().getMongo().setAwaitMs(400);
@@ -290,16 +292,7 @@ class MongoAssertsCatchTest {
                         """
                 ));
 
-        assertEquals(String.format("""
-                        No STRICT matching found in collection <%s> 0 actual documents for:
-                        {
-                            "name": "Alex"
-                        }
-                        
-                        Differences:
-                        [
-                        
-                        ]""",COLLECTION),
+        assertEquals(String.format("Collection <%s> expected to be not empty but got no records within 400 milliseconds", COLLECTION),
                 exception.getMessage());
 
     }

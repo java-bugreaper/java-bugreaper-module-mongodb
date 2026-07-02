@@ -17,7 +17,7 @@ import static net.bugreaper.core.allurereporter.AllureReporter.attachCanBeNull;
 /**
  * Class consists methods that operate with MongoDb
  *
- * <p>For one instance run recommended: {@code MongoDb mongo = MongoDb.getInstance()}</p>
+ * <p>For one instance run recommended: {@code MongoDb mongo = MongoDb.getInstance();}</p>
  *
  *
  * <p> Await for some asserts default: {@link #awaitMs}, can be changed by: {@link #setAwaitMs(int)}
@@ -40,6 +40,7 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
      * This implementation is thread-safe using method-level synchronization.
      *
      * @return the singleton instance of {@link MongoDb}
+     * @see #MongoDb() config setup
      */
     public static synchronized MongoDb getInstance() {
         if (instance == null) {
@@ -57,16 +58,14 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
      * <p><b>Default file:</b> {@code bugreaper.yml}</p>
      * <p><b>Custom file:</b> using {@code -DbugreaperEnv=test} loads {@code bugreaper-test.yml}</p>
      *
-     * <p><b>Required configuration keys:</b></p>
-     * <ul>
-     *     <li>{@code modules.mongodb.url}</li>
-     *     <li>{@code modules.mongodb.database}</li>
-     * </ul>
-     *
-     * <p><b>Optional configuration keys:</b></p>
-     * <ul>
-     *     <li>{@code modules.mongodb.await}</li>
-     * </ul>
+     * <pre>
+     * modules:
+     *   mongodb:
+     *     url: 'mongodb://root:example_password@localhost:27017'
+     *     database: test_db
+     *     await: 420 # optional
+     *     documents-max-count: 15 # optional
+     * </pre>
      *
      * <p>Missing required keys will result in configuration errors.
      * Missing optional keys will fall back to predefined defaults.</p>
@@ -133,9 +132,7 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
     @Override
     @Step("(MongoDb) Insert into collection <{collectionName}>")
     public void insertIntoCollection(String collectionName, @Param(mode = HIDDEN) String json) {
-        attachCanBeNull("add record:", json);
-        Document doc = Document.parse(json);
-        getCollection(collectionName).insertOne(doc);
+        insertIntoCollectionMethod(collectionName, json);
     }
 
     // Get
@@ -154,6 +151,7 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
     }
 
     // Asserts
+
     @Override
     @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has exactly {expectedCount} records")
     public void seeRecordsCountInCollectionExactly(String collectionName, int expectedCount) {

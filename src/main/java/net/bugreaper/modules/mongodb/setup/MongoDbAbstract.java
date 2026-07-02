@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import static com.mongodb.client.model.Sorts.descending;
+import static net.bugreaper.core.allurereporter.AllureReporter.attachCanBeNull;
 import static net.bugreaper.core.allurereporter.AllureReporter.attachFromList;
 import static net.bugreaper.core.assertions.Asserts.assertGreaterThanExpected;
 import static net.bugreaper.core.assertions.Asserts.assertIntEquals;
@@ -34,27 +35,46 @@ import static org.junit.jupiter.api.Assertions.fail;
 @SuppressWarnings("squid:S5960")
 public abstract class MongoDbAbstract {
 
-    protected MongoClient client;
     protected final String connectionString;
+
+    protected MongoClient client;
     protected MongoDatabase defaultDatabase;
+
     /**
      * default ms await in tests
      */
-    protected int awaitMs = 2000;
+    protected volatile int awaitMs = 2000;
 
     /**
      * Default pagination limit for retrieving the N most recent records from the end of a collection.
      * This value is used to optimize test data assertions, grab data, show data.
      * Increasing this limit may affect performance if used in high-throughput queries within test suites.
      */
-    protected int maxLastRecords = 50;
+    protected volatile int maxLastRecords = 50;
 
     protected MongoDbAbstract(String connectionString, String dbName) {
 
         this.connectionString = connectionString;
+        client = MongoClients.create(setupSettings());
+
+        defaultDatabase = client.getDatabase(dbName);
+
+        Runtime.getRuntime().addShutdownHook(createShutdownHook());
+    }
+
+    Thread createShutdownHook() {
+        return new Thread(() -> {
+            if (client != null) {
+                client.close();
+                Log.LOGGER.debug(("MongoClient closed"));
+            }
+        }, "mongodb-connection-shutdown");
+    }
+
+    private MongoClientSettings setupSettings() {
 
         // default connection settings
-        MongoClientSettings settings = MongoClientSettings.builder()
+        return MongoClientSettings.builder()
                 .applyToClusterSettings(builder ->
                         builder.serverSelectionTimeout(5000, TimeUnit.MILLISECONDS))
                 .applyConnectionString(new ConnectionString(connectionString))
@@ -67,18 +87,6 @@ public abstract class MongoDbAbstract {
                                 .maxWaitTime(2000, TimeUnit.MILLISECONDS)
                 )
                 .build();
-
-        client = MongoClients.create(settings);
-
-        defaultDatabase = client.getDatabase(dbName);
-
-        // shutdown hook
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            if (client != null) {
-                client.close();
-                Log.LOGGER.debug(("MongoClient closed"));
-            }
-        }));
     }
 
     private MongoDatabase getDb(String dbName) {
@@ -135,10 +143,11 @@ public abstract class MongoDbAbstract {
                                       String json,
                                       boolean strict) {
 
+        seeCollectionIsNotEmptyMethod(collectionName);
+
         Document expected = Document.parse(json);
         MongoCollection<Document> collection = getCollection(collectionName);
         List<String> errors = new ArrayList<>();
-
 
 
         if (Log.LOGGER.isInfoEnabled()) {
@@ -149,7 +158,7 @@ public abstract class MongoDbAbstract {
 
         int cnt = 0;
         // get latest first
-        for (Document actual : collection.find().sort(descending("_id")).limit(maxLastRecords) ) {
+        for (Document actual : collection.find().sort(descending("_id")).limit(maxLastRecords)) {
             try {
                 cnt++;
 
@@ -178,7 +187,19 @@ public abstract class MongoDbAbstract {
 
     }
 
-    protected int getRecordsCountInCollectionMethod(String collectionName){
+    protected void insertIntoCollectionMethod(String collectionName, String json) {
+        attachCanBeNull("add record:", json);
+
+        try {
+            Document doc = Document.parse(json);
+            getCollection(collectionName).insertOne(doc);
+        }catch (Exception e){
+            throw new MongoDBHelperException ("Failed to insert document: " + e.getMessage(), e);
+        }
+
+    }
+
+    protected int getRecordsCountInCollectionMethod(String collectionName) {
         return (int) getCollection(collectionName).countDocuments();
     }
 
@@ -227,13 +248,13 @@ public abstract class MongoDbAbstract {
     }
 
 
-    private void preCheckDocumentsCount(String collectionName){
+    private void preCheckDocumentsCount(String collectionName) {
 
-        int cnt =getRecordsCountInCollectionMethod(collectionName);
+        int cnt = getRecordsCountInCollectionMethod(collectionName);
 
-        if(cnt > maxLastRecords){
+        if (cnt > maxLastRecords) {
             Log.LOGGER.warn("""
-                    Count of documents in collection <{}>={}: more than maxLastRecords({}) in config
+                    Count of documents in collection <{}> is <{}>: more than maxLastRecords({}) in config
                     only last documents will be taken into account (can be changed by .setMaxLastRecords(int) or config 'documents-max-count')""", collectionName, cnt, maxLastRecords);
         }
     }

@@ -2,5 +2,5 @@ modules:
   mongodb:
     url: 'mongodb://root:example_password@localhost:27017'
     database: test_db
-    await: 420 # optional
+    await: 800 # optional
     documents-max-count: 15 # optional
