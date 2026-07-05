@@ -1,20 +1,21 @@
 package net.bugreaper.modules.mongodb;
 
+import net.bugreaper.core.exceptions.FileReaderException;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.StringContains;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
-import testcontainers.MongoSetup;
+import testcontainers.MongoContainerSetup;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@SuppressWarnings("java:S5976")
+@SuppressWarnings({"java:S5976","java:S5778"})
 @Isolated
-class MongoAssertsCatchTest {
+class MongoAssertsCatchTest extends MongoContainerSetup {
 
-    MongoDb mg = MongoSetup.getInstance().getMongo().setAwaitMs(400);
+    MongoDb mg = getMongo().setAwaitMs(400);
     private static final String COLLECTION = "test-collection";
 
     @BeforeEach
@@ -34,24 +35,37 @@ class MongoAssertsCatchTest {
         );
 
 
-        Throwable exception = assertThrows(AssertionError.class, () ->
+        Throwable exception1 = assertThrows(AssertionError.class, () ->
+                mg.withAwaitMs(210).seeRecordsCountInCollectionExactly(COLLECTION, 2 ));
+
+        assertEquals(
+                String.format("Count records from collection <%s> expected to be EXACTLY <2> but got <1> within 210 milliseconds", COLLECTION),
+                exception1.getMessage());
+
+        Throwable exception2 = assertThrows(AssertionError.class, () ->
                 mg.seeRecordsCountInCollectionExactly(COLLECTION, 2 ));
 
-        MatcherAssert.assertThat(
-                exception.getMessage(),
-                StringContains.containsString(String.format("Count records from collection <%s> expected to be EXACTLY <2> but got <1> within 400 milliseconds", COLLECTION)));
-
+        assertEquals(
+                String.format("Count records from collection <%s> expected to be EXACTLY <2> but got <1> within 400 milliseconds", COLLECTION),
+                exception2.getMessage());
     }
 
     @Test
     void seeCollectionIsNotEmptyFailedTest(){
 
-        Throwable exception = assertThrows(AssertionError.class, () ->
+        Throwable exception1 = assertThrows(AssertionError.class, () ->
+                mg.withAwaitMs(200).seeCollectionIsNotEmpty(COLLECTION));
+
+        assertEquals(
+                String.format("Collection <%s> expected to be not empty but got no records within 200 milliseconds", COLLECTION),
+                exception1.getMessage());
+
+        Throwable exception2 = assertThrows(AssertionError.class, () ->
                 mg.seeCollectionIsNotEmpty(COLLECTION));
 
-        MatcherAssert.assertThat(
-                exception.getMessage(),
-                StringContains.containsString(String.format("Collection <%s> expected to be not empty but got no records within 400 milliseconds", COLLECTION)));
+        assertEquals(
+                String.format("Collection <%s> expected to be not empty but got no records within 400 milliseconds", COLLECTION),
+                exception2.getMessage());
     }
 
 
@@ -65,12 +79,82 @@ class MongoAssertsCatchTest {
                         }"""
         );
 
-        Throwable exception = assertThrows(AssertionError.class, () ->
+        Throwable exception1 = assertThrows(AssertionError.class, () ->
+                mg.withAwaitMs(200).seeCollectionIsEmpty(COLLECTION));
+
+
+        assertEquals(
+                String.format("Collection <%s> expected to be empty but got <1> records within 200 milliseconds", COLLECTION),
+                exception1.getMessage());
+
+        Throwable exception2 = assertThrows(AssertionError.class, () ->
                 mg.seeCollectionIsEmpty(COLLECTION));
 
+
+        assertEquals(
+                String.format("Collection <%s> expected to be empty but got <1> records within 400 milliseconds", COLLECTION),
+                exception2.getMessage());
+    }
+
+    @Test
+    void seeCollectionCountGraterEmptyTest(){
+
+        Throwable exception1 = assertThrows(AssertionError.class, () ->
+                mg.withAwaitMs(200).seeRecordsCountInCollectionIsGreaterThan(COLLECTION, 1));
+
+        assertEquals(
+                String.format("Count records from collection <%s> expected to be GREATER than <1> but got <0> within 200 milliseconds", COLLECTION),
+                exception1.getMessage());
+
+        Throwable exception2 = assertThrows(AssertionError.class, () ->
+                mg.seeRecordsCountInCollectionIsGreaterThan(COLLECTION, 1));
+
+        assertEquals(
+                String.format("Count records from collection <%s> expected to be GREATER than <1> but got <0> within 400 milliseconds", COLLECTION),
+                exception2.getMessage());
+    }
+
+    @Test
+    void seeCollectionCountGraterOneTest(){
+
+        Throwable exception1 = assertThrows(AssertionError.class, () ->
+                mg.withAwaitMs(200).seeRecordsCountInCollectionIsGreaterThan(COLLECTION, 1));
+
         MatcherAssert.assertThat(
-                exception.getMessage(),
-                StringContains.containsString(String.format("Collection <%s> expected to be empty but got <1> records within 400 milliseconds", COLLECTION)));
+                exception1.getMessage(),
+                StringContains.containsString(String.format("Count records from collection <%s> expected to be GREATER than <1> but got <0> within 200 milliseconds", COLLECTION)));
+
+        mg.insertIntoCollection(
+                COLLECTION,
+                """
+                        {
+                            "name": 'Alex'
+                        }"""
+        );
+
+        Throwable exception2 = assertThrows(AssertionError.class, () ->
+                mg.seeRecordsCountInCollectionIsGreaterThan(COLLECTION, 1));
+
+        MatcherAssert.assertThat(
+                exception2.getMessage(),
+                StringContains.containsString(String.format("Count records from collection <%s> expected to be GREATER than <1> but got <1> within 400 milliseconds", COLLECTION)));
+    }
+
+    @Test
+    void insertNotExistingTemplateTest(){
+
+        Throwable exception = assertThrows(FileReaderException.class, () ->
+                mg.insertTemplateIntoCollection(
+                        "not.exist",
+                        """
+                                {
+                                    "name": 'Alex'
+                                }"""
+                ));
+
+        assertEquals(
+                "File not exist in resources: templates/mongodb/not.exist.json",
+                exception.getMessage());
     }
 
     @Test
@@ -98,13 +182,17 @@ class MongoAssertsCatchTest {
                 ));
 
         assertEquals(String.format("""
-                        No CONTAINS matching found in collection <%s> 1 actual documents for:
+                        No CONTAINS matching record found in collection <%s> within 400 milliseconds 
+                        Checked records: 1
+                        
+                        Expected:
                         {
                             name: 'Alex2'
                         }
+                        
                         Differences:
                         [
-            
+                        
                         --- Actual #1---
                         {
                           "name": "Alex",
@@ -112,15 +200,16 @@ class MongoAssertsCatchTest {
                         }
                         --- Differences ---
                          • name: expected [Alex2] but was [Alex]
-            
-                        ]""",COLLECTION),
+                        
+                        ]
+                        """,COLLECTION),
                 exception.getMessage());
     }
 
     @Test
     void containsRecordsTest(){
 
-        MongoDb mgSize = MongoSetup.getInstance().getMongo().setMaxLastRecords(1);
+        MongoDb mgSize = getMongo().setMaxLastRecords(1);
 
         mgSize.insertIntoCollection(
                 COLLECTION,
@@ -153,13 +242,17 @@ class MongoAssertsCatchTest {
                 ));
 
         assertEquals(String.format("""
-                        No CONTAINS matching found in collection <%s> 1 actual documents for:
+                        No CONTAINS matching record found in collection <%s> within 2 seconds
+                        Checked records: 1
+                        
+                        Expected:
                         {
                             name: 'Alex2'
                         }
+                        
                         Differences:
                         [
-            
+                        
                         --- Actual #1---
                         {
                           "name": "Alex",
@@ -167,8 +260,9 @@ class MongoAssertsCatchTest {
                         }
                         --- Differences ---
                          • name: expected [Alex2] but was [Alex]
-            
-                        ]""",COLLECTION),
+                        
+                        ]
+                        """,COLLECTION),
                 exception.getMessage());
     }
 
@@ -179,8 +273,8 @@ class MongoAssertsCatchTest {
                 COLLECTION,
                 """
                         {
-                            name: 'Alex',
-                            age: 25
+                            "name": "Alex",
+                            "age": 25
                         }"""
         );
 
@@ -188,7 +282,7 @@ class MongoAssertsCatchTest {
                 COLLECTION,
                 """
                         {
-                            names: 'many'
+                            "names": "many"
                         }"""
         );
 
@@ -197,16 +291,20 @@ class MongoAssertsCatchTest {
                         COLLECTION,
                         """
                         {
-                            name: 'Alex'
+                            "name": "Alex"
                         }
                         """
                 ));
 
         assertEquals(String.format("""
-                        No STRICT matching found in collection <%s> 2 actual documents for:
+                        No STRICT matching record found in collection <%s> within 400 milliseconds
+                        Checked records: 2
+                        
+                        Expected:
                         {
-                            name: 'Alex'
+                            "name": "Alex"
                         }
+                        
                         
                         Differences:
                         [
@@ -231,7 +329,8 @@ class MongoAssertsCatchTest {
                         --- Differences ---
                          • age: unexpected field
                         
-                        ]""",COLLECTION),
+                        ]
+                        """,COLLECTION),
                 exception.getMessage());
     }
 
@@ -258,14 +357,18 @@ class MongoAssertsCatchTest {
                 ));
 
         assertEquals(String.format("""
-                        No STRICT matching found in collection <%s> 1 actual documents for:
+                        No STRICT matching record found in collection <%s> within 400 milliseconds
+                        Checked records: 1
+                                               
+                        Expected:
                         {
                             name: null
                         }
-                        
+                                               
+                                               
                         Differences:
                         [
-                        
+                                               
                         --- Actual #1---
                         {
                           "name": "Alex",
@@ -274,15 +377,29 @@ class MongoAssertsCatchTest {
                         --- Differences ---
                          • name: expected null but was Alex
                          • age: unexpected field
-                        
-                        ]""",COLLECTION),
+                                               
+                        ]
+                        """,COLLECTION),
                 exception.getMessage());
     }
 
     @Test
     void equalNoRecordTest(){
-        
-        Throwable exception = assertThrows(AssertionError.class, () ->
+
+        Throwable exception1 = assertThrows(AssertionError.class, () ->
+                mg.withAwaitMs(200).seeRecordExistsInCollection(
+                        COLLECTION,
+                        """
+                        {
+                            "name": "John"
+                        }
+                        """
+                ));
+
+        assertEquals(String.format("Collection <%s> got no records within 200 milliseconds", COLLECTION),
+                exception1.getMessage());
+
+        Throwable exception2 = assertThrows(AssertionError.class, () ->
                 mg.seeRecordExistsInCollection(
                         COLLECTION,
                         """
@@ -292,7 +409,20 @@ class MongoAssertsCatchTest {
                         """
                 ));
 
-        assertEquals(String.format("Collection <%s> expected to be not empty but got no records within 400 milliseconds", COLLECTION),
+        assertEquals(String.format("Collection <%s> got no records within 400 milliseconds", COLLECTION),
+                exception2.getMessage());
+
+    }
+
+    @Test
+    void grabDocumentsFromCollectionNoRecordTest(){
+
+        mg.withAwaitMs(200);
+
+        Throwable exception = assertThrows(AssertionError.class, () ->
+                mg.grabDocumentsFromCollection(COLLECTION));
+
+        assertEquals(String.format("Collection <%s> expected to be not empty but got no records within 200 milliseconds", COLLECTION),
                 exception.getMessage());
 
     }
@@ -313,7 +443,24 @@ class MongoAssertsCatchTest {
                         }"""
         );
 
-        Throwable exception = assertThrows(AssertionError.class, () ->
+        Throwable exception1 = assertThrows(AssertionError.class, () ->
+                mg.withAwaitMs(210).seeRecordExistsInCollection(
+                        COLLECTION,
+                        """
+                        {
+                             user: {
+                                name: 'Alex',
+                                array: ["25", "27"]
+                            }
+                        }"""
+                ));
+
+        MatcherAssert.assertThat(
+                exception1.getMessage(),
+                StringContains.containsString(String.format("No STRICT matching record found in collection <%s> within 210 milliseconds", COLLECTION)));
+
+
+        Throwable exception2 = assertThrows(AssertionError.class, () ->
                 mg.seeRecordExistsInCollection(
                         COLLECTION,
                         """
@@ -326,13 +473,17 @@ class MongoAssertsCatchTest {
                 ));
 
         assertEquals(String.format("""
-                        No STRICT matching found in collection <%s> 1 actual documents for:
+                        No STRICT matching record found in collection <%s> within 400 milliseconds
+                        Checked records: 1
+                        
+                        Expected:
                         {
                              user: {
                                 name: 'Alex',
                                 array: ["25", "27"]
                             }
                         }
+                        
                         Differences:
                         [
                         
@@ -350,8 +501,9 @@ class MongoAssertsCatchTest {
                         --- Differences ---
                          • user.array: array size mismatch. expected 2 but was 3
                         
-                        ]""",COLLECTION),
-                exception.getMessage());
+                        ]
+                        """,COLLECTION),
+                exception2.getMessage());
     }
 
     @Test
@@ -383,13 +535,17 @@ class MongoAssertsCatchTest {
                 ));
 
         assertEquals(String.format("""
-                        No STRICT matching found in collection <%s> 1 actual documents for:
+                        No STRICT matching record found in collection <%s> within 400 milliseconds
+                        Checked records: 1
+                        
+                        Expected:
                         {
                              user: {
                                 name: 'Alex',
                                 array: ["25", "27", "28"]
                             }
                         }
+                        
                         Differences:
                         [
                         
@@ -408,7 +564,8 @@ class MongoAssertsCatchTest {
                          • user.array[1]: expected [27] but was [26]
                          • user.array[2]: expected [28] but was [27]
                         
-                        ]""",COLLECTION),
+                        ]
+                        """,COLLECTION),
                 exception.getMessage());
     }
 
@@ -441,13 +598,17 @@ class MongoAssertsCatchTest {
                 ));
 
         assertEquals(String.format("""
-                        No CONTAINS matching found in collection <%s> 1 actual documents for:
+                        No CONTAINS matching record found in collection <%s> within 400 milliseconds
+                        Checked records: 1
+                        
+                        Expected:
                         {
                              "user": {
                                 "name": "Alex",
                                 "array": ["25", "29"]
                             }
                         }
+                        
                         Differences:
                         [
                         
@@ -465,7 +626,8 @@ class MongoAssertsCatchTest {
                         --- Differences ---
                          • user.array: array does not contain 29
                         
-                        ]""",COLLECTION),
+                        ]
+                        """,COLLECTION),
                 exception.getMessage());
     }
 
@@ -498,13 +660,17 @@ class MongoAssertsCatchTest {
                 ));
 
         assertEquals(String.format("""
-                        No STRICT matching found in collection <%s> 1 actual documents for:
+                        No STRICT matching record found in collection <%s> within 400 milliseconds
+                        Checked records: 1
+                        
+                        Expected:
                         {
                              user: {
                                 name: 'Alex',
                                 array: ["27", "26", "25"]
                             }
                         }
+                        
                         Differences:
                         [
                         
@@ -523,7 +689,8 @@ class MongoAssertsCatchTest {
                          • user.array[0]: expected [27] but was [25]
                          • user.array[2]: expected [25] but was [27]
                         
-                        ]""",COLLECTION),
+                        ]
+                        """,COLLECTION),
                 exception.getMessage());
     }
 }

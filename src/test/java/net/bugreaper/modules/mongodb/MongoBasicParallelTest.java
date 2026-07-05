@@ -3,7 +3,7 @@ package net.bugreaper.modules.mongodb;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import testcontainers.MongoSetup;
+import testcontainers.MongoContainerSetup;
 
 import java.util.concurrent.CompletableFuture;
 
@@ -11,11 +11,9 @@ import static java.lang.Thread.sleep;
 
 @SuppressWarnings("squid:S2699")
 @Execution(ExecutionMode.CONCURRENT)
-class MongoBasicParallelTest {
+class MongoBasicParallelTest extends MongoContainerSetup {
 
-    static MongoDb  mgStatic = MongoSetup.getInstance().getMongo();
-    MongoDb mg = MongoSetup.getInstance().getMongo();
-
+    static MongoDb mg = getMongo();
     MongoDb mgConf = MongoDb.getInstance();
 
     private static final String COLLECTION = "users_parallel";
@@ -25,8 +23,8 @@ class MongoBasicParallelTest {
 
     @BeforeAll
     static void clean(){
-        mgStatic.cleanCollection(COLLECTION);
-        mgStatic.cleanCollection(COLLECTION3);
+        mg.cleanCollection(COLLECTION);
+        mg.cleanCollection(COLLECTION3);
     }
 
 
@@ -38,7 +36,7 @@ class MongoBasicParallelTest {
                 {
                     "name": "Anna"
                 }"""));
-        CompletableFuture<Void> future3 = CompletableFuture.runAsync(() -> pushWithSleep(mg, COLLECTION, "Anna"));
+        CompletableFuture<Void> future3 = CompletableFuture.runAsync(() -> pushWithSleep(mg, COLLECTION, "Anna", 500));
 
         CompletableFuture.allOf(future1, future2, future3).join();
 
@@ -53,9 +51,10 @@ class MongoBasicParallelTest {
                 {
                     "name": "Alex"
                 }"""));
-        CompletableFuture<Void> future3 = CompletableFuture.runAsync(() -> pushWithSleep(mgConf, COLLECTION2, "Alex"));
+        CompletableFuture<Void> future3 = CompletableFuture.runAsync(() -> pushWithSleep(mgConf, COLLECTION2, "Alex",500));
+        CompletableFuture<Void> future4 = CompletableFuture.runAsync(() -> pushWithSleep(mgConf, COLLECTION2, "John",300));
 
-        CompletableFuture.allOf(future1, future2, future3).join();
+        CompletableFuture.allOf(future1, future2, future3, future4).join();
 
     }
 
@@ -70,7 +69,7 @@ class MongoBasicParallelTest {
                 {
                     "name": "John"
                 }"""));
-        CompletableFuture<Void> future3 = CompletableFuture.runAsync(() -> pushWithSleep(mgConf, COLLECTION3, "John"));
+        CompletableFuture<Void> future3 = CompletableFuture.runAsync(() -> pushWithSleep(mgConf, COLLECTION3, "John", 500));
 
         CompletableFuture.allOf(future1, future2, future3).join();
 
@@ -78,9 +77,9 @@ class MongoBasicParallelTest {
 
 
     @SuppressWarnings("squid:S2925")
-    private void pushWithSleep(MongoDb obj, String collection, String name){
+    private void pushWithSleep(MongoDb obj, String collection, String name, int sleep){
         try {
-            sleep(500);
+            sleep(sleep);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }

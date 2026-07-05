@@ -5,22 +5,20 @@ import com.fasterxml.jackson.databind.JsonNode;
 import net.bugreaper.core.utils.AllureAssert;
 import net.bugreaper.core.utils.AllureResultLoader;
 import net.bugreaper.core.utils.LogWatcher;
-import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.parallel.Isolated;
-import testcontainers.MongoSetup;
 
-import static org.hamcrest.Matchers.matchesRegex;
+import testcontainers.MongoContainerSetup;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static testcontainers.MongoSetup.expectedUrl;
 
 @SuppressWarnings("squid:S2699")
 @Isolated
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-class MongoBasicTest {
+class MongoBasicTest extends MongoContainerSetup {
 
-    MongoDb mg = MongoSetup.getInstance().getMongo();
+    MongoDb mg = getMongo();
 
     private static final String COLLECTION = "users";
 
@@ -221,6 +219,7 @@ class MongoBasicTest {
         );
 
         mg.seeRecordsCountInCollectionExactly(COLLECTION, 2);
+        mg.seeRecordsCountInCollectionIsGreaterThan(COLLECTION, 1);
         mg.seeRecordsCountInCollectionExactly("test2.users2", 1);
     }
 
@@ -279,13 +278,15 @@ class MongoBasicTest {
                         }"""
         );
 
+        mg.seeRecordsCountInCollectionExactly(COLLECTION, 4);
+
         mg.seeRecordExistsInCollection(
                 COLLECTION,
                 """
-                {
-                          name: 'Alex',
-                            age: 25
-                }
+                  {
+                      name: 'Alex',
+                      age: 25
+                  }
                 """
         );
     }
@@ -321,9 +322,9 @@ class MongoBasicTest {
 
     @Test
     @Order(1)
-    void testCountConsumedMessagesLog() {
+    void testCheckRecordsLog() {
 
-        MongoDb mgSize = MongoSetup.getInstance().getMongo().setMaxLastRecords(2);
+        MongoDb mgSize = getMongo().setMaxLastRecords(2);
 
         mgSize.insertIntoCollection(
                 COLLECTION,"""
@@ -345,34 +346,26 @@ class MongoBasicTest {
                 COLLECTION,"""
                         {"name": "Anna", "age": 25}"""
         );
-        assertEquals(
-                """
-                [[WARN] Count of documents in collection <users> is <3>: more than maxLastRecords(2) in config
-                only last documents will be taken into account (can be changed by .setMaxLastRecords(int) or config 'documents-max-count')]""",
-                logWatcher.getLoggedEvents(Level.WARN).toString());
-
-        assertEquals(
-                "[[INFO] In collection <users> found 3 documents]",
-                logWatcher.getLoggedEvents(Level.INFO).toString());
-
-        MatcherAssert.assertThat(
-                logWatcher.getLoggedEvents(Level.DEBUG).toString(),
-                matchesRegex("""
-                (?s)^\\[\\[DEBUG\\] Document for check:\\s*\
-                Document\\{\\{_id=[a-f0-9]{24}, name=Max, age=33\\}\\},\\s*\\[DEBUG\\] Document for check:\\s*\
-                Document\\{\\{_id=[a-f0-9]{24}, name=Anna, age=25\\}\\}\\]$\
-                """));
 
         mgSize.seeRecordExistsInCollection(
                 COLLECTION,"""
                          {"name": "Max", "age": 33}"""
         );
 
+
+        logWatcher.clear();
         assertThrows(AssertionError.class, () ->
                 mgSize.seeRecordPartExistsInCollection(
                         COLLECTION,"""
                          {"age": 26}"""
                 ));
+
+        //warning log only on assert failed!
+        assertEquals(
+                """
+                [[WARN] Count of documents in collection <users> is <3>: more than maxLastRecords(2) in config
+                only last documents will be taken into account (can be changed by .setMaxLastRecords(int) or config 'documents-max-count')]""",
+                logWatcher.getLoggedEvents(Level.WARN).toString());
 
        var result = mgSize.grabDocumentsFromCollection(COLLECTION)
                 .seeListHasExactlyCount(2)
@@ -388,10 +381,11 @@ class MongoBasicTest {
                           {"age": 26}"""
                 ));
     }
+
     @Test
     @Order(2)
     void allureForListCheck() {
-        JsonNode result = AllureResultLoader.loadByTestName("testCountConsumedMessagesLog");
+        JsonNode result = AllureResultLoader.loadByTestName("testCheckRecordsLog");
 
         AllureAssert.assertThat(result)
 
@@ -406,7 +400,7 @@ class MongoBasicTest {
                         {"age": 26}""")
                 .hasAttachment("Differences:", """
                         [
-                                                
+                        
                         --- Actual #1---
                         {
                           "name": "Max",
@@ -414,11 +408,11 @@ class MongoBasicTest {
                         }
                         --- Differences ---
                          • age: expected [26] but was [33]
-                                                
-                                                
+                        
+                        
                         -----------
-                                                
-                                                
+                        
+                        
                         --- Actual #2---
                         {
                           "name": "Anna",
@@ -426,7 +420,7 @@ class MongoBasicTest {
                         }
                         --- Differences ---
                          • age: expected [26] but was [25]
-                                                
+                        
                         ]""")
 
                 .hasStep("(MongoDb) Grab documents from collection: users")
@@ -463,6 +457,7 @@ class MongoBasicTest {
                             default_database=test_db
                             awaitMs=2000
                             maxLastRecords=50
+                            templatesPath=templates/mongodb/
                         """, expectedUrl),
                 mg.getConfigSummary());
     }
@@ -478,8 +473,129 @@ class MongoBasicTest {
                             default_database=test_db
                             awaitMs=800
                             maxLastRecords=15
+                            templatesPath=templates/mongodb/
                         """, expectedUrl),
                 mongo.getConfigSummary());
     }
-    
+
+
+    @Test
+    void insertTemplateBasicTest(){
+
+        mg.cleanCollection(COLLECTION);
+
+
+        mg.insertTemplateIntoCollection(
+                COLLECTION,
+                """
+                        {
+                            "id": 2,
+                            "type": null
+                        }"""
+        );
+
+        assertEquals(
+                "[[DEBUG] Looking for template file in resources: templates/mongodb/users.json]",
+                logWatcher.getLoggedEvents(Level.DEBUG).toString());
+
+        mg.seeRecordExistsInCollection(COLLECTION,
+                """
+                        {
+                          "id": 2,
+                          "type": null,
+                          "params": {
+                            "name": "Alex",
+                            "age": 30,
+                            "array": [
+                              {
+                                "product": "monitor",
+                                "price": 99.99
+                              }
+                            ]
+                          }
+                        }""");
+
+
+    }
+
+    @Test
+    void insertTemplateDeepArrayTest(){
+
+        mg.cleanCollection(COLLECTION);
+
+        mg.insertTemplateIntoCollection(
+                COLLECTION,
+                """
+                        {
+                            "id": 2,
+                            "params": {
+                                "name": "John",
+                                "new": "test",
+                                "array": [
+                                    {
+                                        "product": "CPU"
+                                    }
+                                ]
+                            }
+                        }"""
+        );
+
+        mg.seeRecordExistsInCollection(COLLECTION,
+                """
+                        {
+                          "id": 2,
+                          "type": "user",
+                          "params": {
+                            "name": "John",
+                            "age": 30,
+                            "new": "test",
+                            "array": [
+                              {
+                                "product": "CPU",
+                                "price": 99.99
+                              }
+                            ]
+                          }
+                        }""");
+    }
+
+    @Test
+    void insertCustomTemplateBasicTest(){
+
+        MongoDb mgCustom = getMongo().setTemplatesDirectory("templates/new-mongo/");
+        String collection = "my_new_db.new.users";
+
+        mgCustom.cleanCollection(collection);
+
+        mgCustom.insertTemplateIntoCollection(
+                collection,
+                """
+                        {
+                            "id": 2
+                        }"""
+        );
+
+        assertEquals(
+                "[[DEBUG] Looking for template file in resources: templates/new-mongo/my_new_db.new.users.json]",
+                logWatcher.getLoggedEvents(Level.DEBUG).toString());
+
+        mgCustom.seeRecordExistsInCollection(collection,
+                """
+                        {
+                          "id": 2,
+                          "type": "new user",
+                          "name": "Mark"
+                        }""");
+
+        assertEquals(String.format("""
+                        MongoDb:
+                            url=%s
+                            default_database=test_db
+                            awaitMs=2000
+                            maxLastRecords=50
+                            templatesPath=templates/new-mongo/
+                        """, expectedUrl),
+                mgCustom.getConfigSummary());
+    }
 }
+

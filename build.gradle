@@ -20,6 +20,26 @@ java {
     withSourcesJar()
 }
 
+tasks.withType(Jar).configureEach {
+    into('META-INF') {
+        from(rootProject.file('NOTICE'))
+        from(rootProject.file('LICENSE'))
+    }
+
+    manifest {
+        attributes(
+                'Implementation-Id': project.group,
+                'Implementation-Title': project.name,
+                'Implementation-Version': project.version,
+                'Bundle-DocURL': project.findProperty('SITE_PATH'),
+                'Implementation-Vendor': 'Oleksii Betin',
+                'Bundle-License': 'https://apache.org',
+                'Created-By': "Gradle ${gradle.gradleVersion}",
+                'Build-Jdk': System.getProperty('java.version')
+        )
+    }
+}
+
 repositories {
 
     mavenCentral()
@@ -28,7 +48,7 @@ repositories {
 }
 
 dependencies {
-    api 'net.bugreaper:core:1.3.3'
+    api 'net.bugreaper:core:1.4.1'
     api 'org.mongodb:mongodb-driver-sync:5.1.0'
 
     testImplementation "org.testcontainers:testcontainers-mongodb:2.0.5"

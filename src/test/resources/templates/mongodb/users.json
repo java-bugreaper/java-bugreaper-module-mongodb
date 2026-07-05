@@ -1,0 +1,14 @@
+{
+  "id": 1,
+  "type": "user",
+  "params": {
+    "name": "Alex",
+    "age": 30,
+    "array": [
+      {
+        "product": "monitor",
+        "price": 99.99
+      }
+    ]
+  }
+}

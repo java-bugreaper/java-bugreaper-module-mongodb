@@ -6,15 +6,15 @@ import org.hamcrest.core.StringContains;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
-import testcontainers.MongoSetup;
+import testcontainers.MongoContainerSetup;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 
 @Isolated
-class MongoNegativeTest {
+class MongoNegativeTest extends MongoContainerSetup {
 
-    MongoDb mg = MongoSetup.getInstance().getMongo();
+    MongoDb mg = getMongo();
 
     @BeforeEach
     void clean(){

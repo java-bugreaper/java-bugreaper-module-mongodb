@@ -6,6 +6,7 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.Sorts;
 import net.bugreaper.core.assertable.AssertableStringList;
 import net.bugreaper.core.mappers.StringMappers;
 import net.bugreaper.modules.mongodb.exceptions.MongoDBHelperException;
@@ -21,16 +22,20 @@ import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.mongodb.client.model.Sorts.descending;
 import static net.bugreaper.core.allurereporter.AllureReporter.attachCanBeNull;
 import static net.bugreaper.core.allurereporter.AllureReporter.attachFromList;
 import static net.bugreaper.core.assertions.Asserts.assertGreaterThanExpected;
 import static net.bugreaper.core.assertions.Asserts.assertIntEquals;
+import static net.bugreaper.core.filereaders.FileReader.readJsonFromFile;
+import static net.bugreaper.core.mappers.JsonMerge.mergeJsonDeep;
 import static net.bugreaper.core.mappers.StringMappers.formatMilliseconds;
 import static net.bugreaper.core.mappers.StringMappers.listToString;
 import static net.bugreaper.core.utils.AwaitUtils.awaitCustom;
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @SuppressWarnings("squid:S5960")
 public abstract class MongoDbAbstract {
@@ -51,6 +56,11 @@ public abstract class MongoDbAbstract {
      * Increasing this limit may affect performance if used in high-throughput queries within test suites.
      */
     protected volatile int maxLastRecords = 50;
+
+    /**
+     * default templates path for insert
+     */
+    protected volatile String templatesPath = "templates/mongodb/";
 
     protected MongoDbAbstract(String connectionString, String dbName) {
 
@@ -111,9 +121,9 @@ public abstract class MongoDbAbstract {
                 .getCollection(StringUtils.substringAfter(collectionName, "."));
     }
 
-    protected AssertableStringList grabDocumentsFromCollectionMethod(String collectionName) {
+    protected AssertableStringList grabDocumentsFromCollectionMethod(String collectionName, int providedAwaitMs) {
 
-        seeCollectionIsNotEmptyMethod(collectionName);
+        seeCollectionIsNotEmptyMethod(collectionName, providedAwaitMs);
         preCheckDocumentsCount(collectionName);
 
         JsonWriterSettings pretty = JsonWriterSettings.builder()
@@ -141,50 +151,113 @@ public abstract class MongoDbAbstract {
 
     protected void assertRecordExists(String collectionName,
                                       String json,
-                                      boolean strict) {
-
-        seeCollectionIsNotEmptyMethod(collectionName);
+                                      boolean strict,
+                                      int providedAwaitMs) {
 
         Document expected = Document.parse(json);
-        MongoCollection<Document> collection = getCollection(collectionName);
-        List<String> errors = new ArrayList<>();
+
+        AtomicReference<List<String>> lastErrors =
+                new AtomicReference<>(new ArrayList<>());
+
+        AtomicInteger checkedRecords =
+                new AtomicInteger();
+
+        try {
+            awaitCustom(providedAwaitMs).until(() -> {
+
+                        List<String> errors = new ArrayList<>();
+
+                        boolean found = checkRecords(
+                                collectionName,
+                                expected,
+                                strict,
+                                errors,
+                                checkedRecords
+                        );
+
+                        lastErrors.set(errors);
+
+                        //no warning log that read only limit!
+
+                        return found;
+                    });
+
+        } catch (ConditionTimeoutException e) {
+
+            if(lastErrors.get().isEmpty()){
+                throw new AssertionError(
+                        MessageFormat.format(
+                                "Collection <{0}> got no records within {1}",
+                                collectionName, formatMilliseconds(providedAwaitMs)));
+            }
 
 
-        if (Log.LOGGER.isInfoEnabled()) {
-            Log.LOGGER.info("In collection <{}> found {} documents", collectionName, collection.countDocuments());
+            String mode = strict ? "STRICT" : "CONTAINS";
+
+            if (!lastErrors.get().isEmpty()) {
+                attachFromList("Differences:", lastErrors.get());
+            }
+
+            //on fail with difference only!
+            preCheckDocumentsCount(collectionName);
+
+            throw new AssertionError(
+                    String.format(
+                            """
+                            No %s matching record found in collection <%s> within %s
+                            Checked records: %d
+    
+                            Expected:
+                            %s
+    
+                            Differences:
+                            %s
+                            """,
+                            mode,
+                            collectionName,
+                            formatMilliseconds(providedAwaitMs),
+                            checkedRecords.get(),
+                            json,
+                            StringMappers.listToString(lastErrors.get())
+                    )
+            );
         }
+    }
 
-        preCheckDocumentsCount(collectionName);
+    private boolean checkRecords(String collectionName,
+                                 Document expected,
+                                 boolean strict,
+                                 List<String> errors,
+                                 AtomicInteger checkedRecords) {
 
-        int cnt = 0;
-        // get latest first
-        for (Document actual : collection.find().sort(descending("_id")).limit(maxLastRecords)) {
+        List<Document> records = getCollection(collectionName)
+                .find()
+                .sort(Sorts.descending("_id"))
+                .limit(maxLastRecords)
+                .into(new ArrayList<>());
+
+        checkedRecords.set(records.size());
+
+        // Check newest -> oldest
+        for (int i = 0; i < records.size(); i++) {
+
             try {
-                cnt++;
 
-                Log.LOGGER.debug("Document for check:\n{}", actual);
+                JsonMatcher.assertMatches(
+                        i + 1,
+                        expected,
+                        records.get(i),
+                        strict
+                );
 
-                JsonMatcher.assertMatches(cnt, expected, actual, strict);
-                return;
-            } catch (AssertionError error) {
-                errors.add(error.getMessage());
+                return true;
+
+            } catch (AssertionError e) {
+                errors.add(e.getMessage());
             }
         }
 
-        String str = "CONTAINS";
-        if (strict) {
-            str = "STRICT";
-        }
-
-        //Allure attach
-        if (cnt != 0) {
-            attachFromList("Differences:", errors);
-        }
-
-        fail(
-                String.format("No %s matching found in collection <%s> %d actual documents for:%n%s%nDifferences:%n%s",
-                        str, collectionName, cnt, json, StringMappers.listToString(errors)));
-
+        return false;
     }
 
     protected void insertIntoCollectionMethod(String collectionName, String json) {
@@ -199,50 +272,73 @@ public abstract class MongoDbAbstract {
 
     }
 
+    protected void insertIntoCollectionTemplateMethod(String collectionName, String providedJson) {
+
+        String fullTemplatePath = templatesPath + collectionName + ".json";
+        Log.LOGGER.debug("Looking for template file in resources: {}", fullTemplatePath);
+
+        String finalJson = mergeJsonDeep(readJsonFromFile(fullTemplatePath), providedJson);
+
+        insertIntoCollectionMethod(collectionName, finalJson);
+    }
+
     protected int getRecordsCountInCollectionMethod(String collectionName) {
         return (int) getCollection(collectionName).countDocuments();
     }
 
-    protected void seeRecordsCountInCollectionExactlyMethod(String collectionName, int expectedCount) {
+    protected void seeRecordsCountInCollectionExactlyMethod(String collectionName, int expectedCount, int providedAwaitMs) {
 
         try {
-            awaitCustom(awaitMs).untilAsserted(() ->
+            awaitCustom(providedAwaitMs).untilAsserted(() ->
                     assertIntEquals(expectedCount, getRecordsCountInCollectionMethod(collectionName)));
 
         } catch (ConditionTimeoutException e) {
-            fail(
+            throw new AssertionError(
                     MessageFormat.format(
                             "Count records from collection <{0}> expected to be EXACTLY <{1}> but got <{2}> within {3}",
-                            collectionName, expectedCount, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(awaitMs)));
+                            collectionName, expectedCount, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(providedAwaitMs)));
         }
 
     }
 
-    protected void seeCollectionIsEmptyMethod(String collectionName) {
+    protected void seeRecordsCountInCollectionIsGreaterThanMethod(String collectionName, int expectedCount, int providedAwaitMs) {
 
         try {
-            awaitCustom(awaitMs).untilAsserted(() ->
+            awaitCustom(providedAwaitMs).untilAsserted(() ->
+                    assertGreaterThanExpected(expectedCount, getRecordsCountInCollectionMethod(collectionName)));
+        } catch (ConditionTimeoutException e) {
+            throw new AssertionError(
+                    MessageFormat.format(
+                            "Count records from collection <{0}> expected to be GREATER than <{1}> but got <{2}> within {3}",
+                            collectionName, expectedCount, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(providedAwaitMs)));
+        }
+    }
+
+    protected void seeCollectionIsEmptyMethod(String collectionName, int providedAwaitMs) {
+
+        try {
+            awaitCustom(providedAwaitMs).untilAsserted(() ->
                     assertIntEquals(0, getRecordsCountInCollectionMethod(collectionName)));
 
         } catch (ConditionTimeoutException e) {
-            fail(
+            throw new AssertionError(
                     MessageFormat.format(
                             "Collection <{0}> expected to be empty but got <{1}> records within {2}",
-                            collectionName, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(awaitMs)));
+                            collectionName, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(providedAwaitMs)));
         }
 
     }
 
-    protected void seeCollectionIsNotEmptyMethod(String collectionName) {
+    protected void seeCollectionIsNotEmptyMethod(String collectionName, int providedAwaitMs) {
 
         try {
-            awaitCustom(awaitMs).untilAsserted(() ->
-                    assertGreaterThanExpected(0, getRecordsCountInCollectionMethod(collectionName)));
+            awaitCustom(providedAwaitMs).untilAsserted(() ->
+                    assertNotEquals(0, getRecordsCountInCollectionMethod(collectionName)));
         } catch (ConditionTimeoutException e) {
-            fail(
+            throw new AssertionError(
                     MessageFormat.format(
                             "Collection <{0}> expected to be not empty but got no records within {1}",
-                            collectionName, formatMilliseconds(awaitMs)));
+                            collectionName, formatMilliseconds(providedAwaitMs)));
         }
 
     }

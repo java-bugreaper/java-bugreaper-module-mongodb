@@ -19,6 +19,17 @@ public interface MongoDbAsserts {
     */
     void seeRecordsCountInCollectionExactly(String collectionName, int expectedCount);
 
+    /**
+     * Assert number of documents in collection greater than minSize
+     * <p><b>with await</b>
+     *
+     * @param collectionName collection name
+     * @param minCount minimum count
+     * @throws AssertionError on assert fail
+     */
+    void seeRecordsCountInCollectionIsGreaterThan(String collectionName, int minCount);
+
+
    /**
     * Assert that collection is empty
     * <p><b>with await</b>
