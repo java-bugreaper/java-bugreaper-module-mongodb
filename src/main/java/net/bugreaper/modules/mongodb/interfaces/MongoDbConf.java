@@ -18,6 +18,16 @@ public interface MongoDbConf {
     MongoDb setAwaitMs(int awaitMs);
 
     /**
+     * Configure await for next assert (or grab) with await (than await rollback to global)
+     * global {@link #setAwaitMs(int)} will be ignored
+     *
+     * @param awaitMs ms await
+     * @return this instance for method chaining
+     * @throws IllegalArgumentException on invalid setup
+     */
+    MongoDb withAwaitMs(int awaitMs);
+
+    /**
      * Sets the maximum number of last records to be stored for asserts (and other methods).
      *
      * @param maxLastRecords the maximum number of last records to store. Must be >= 1.
@@ -25,6 +35,16 @@ public interface MongoDbConf {
      * @throws IllegalArgumentException if {@code maxLastRecords} is less than 1
      */
     MongoDb setMaxLastRecords(int maxLastRecords);
+
+    /**
+     * Configure directory in resources for collections templates
+     *
+     * @param templatePath path in resources {@code "my_dir/sub_dir/"}
+     * @return this instance for method chaining
+     * @throws IllegalArgumentException on invalid setup
+     */
+    MongoDb setTemplatesDirectory(String templatePath);
+
 
     /**
      * Returns and logs (at INFO level) a human-readable summary of all resolved

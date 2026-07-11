@@ -29,6 +29,11 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
 
     private static MongoDb instance;
 
+    /**
+     * specific ms await in specific assert (configure with {@link #withAwaitMs(int)})
+     */
+    private final ThreadLocal<Integer> specificAwaitMs = ThreadLocal.withInitial(() -> 0);
+
 
     public MongoDb(String connectionString, String dbName) {
         super(connectionString, dbName);
@@ -99,11 +104,29 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
     }
 
     @Override
+    public MongoDb withAwaitMs(int specificAwaitMs) {
+        if (specificAwaitMs < 200) {
+            throw new IllegalArgumentException("specificAwaitMs too small (can`t bee less 200ms)");
+        }
+        this.specificAwaitMs.set(specificAwaitMs);
+        return this;
+    }
+
+    @Override
     public MongoDb setMaxLastRecords(int maxLastRecords) {
         if (maxLastRecords < 1) {
             throw new IllegalArgumentException("maxLastRecords too small (can`t bee less 1)");
         }
         this.maxLastRecords = maxLastRecords;
+        return this;
+    }
+
+    @Override
+    public MongoDb setTemplatesDirectory(String templatesPath) {
+        if (templatesPath == null || templatesPath.isBlank()) {
+            throw new IllegalArgumentException("templatesPath can`t be empty or null");
+        }
+        this.templatesPath = templatesPath;
         return this;
     }
 
@@ -114,8 +137,9 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
                             url=%s
                             default_database=%s
                             awaitMs=%d
-                            maxLastRecords=%d%n""",
-                this.getClass().getSimpleName(), connectionString, defaultDatabase.getName(), awaitMs, maxLastRecords);
+                            maxLastRecords=%d
+                            templatesPath=%s%n""",
+                this.getClass().getSimpleName(), connectionString, defaultDatabase.getName(), awaitMs, maxLastRecords, templatesPath);
 
         Log.LOGGER.info(info);
         return info;
@@ -135,6 +159,12 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
         insertIntoCollectionMethod(collectionName, json);
     }
 
+     @Override
+    @Step("(MongoDb) Insert into collection <{collectionName}>")
+    public void insertTemplateIntoCollection(String collectionName, String providedJson) {
+        insertIntoCollectionTemplateMethod(collectionName, providedJson);
+    }
+
     // Get
 
 
@@ -147,7 +177,7 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
     @Override
     @Step("(MongoDb) Grab documents from collection: {collectionName}")
     public AssertableStringList grabDocumentsFromCollection(String collectionName) {
-        return grabDocumentsFromCollectionMethod(collectionName);
+        return grabDocumentsFromCollectionMethod(collectionName, await());
     }
 
     // Asserts
@@ -155,33 +185,48 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
     @Override
     @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has exactly {expectedCount} records")
     public void seeRecordsCountInCollectionExactly(String collectionName, int expectedCount) {
-        seeRecordsCountInCollectionExactlyMethod(collectionName, expectedCount);
+        seeRecordsCountInCollectionExactlyMethod(collectionName, expectedCount, await());
+    }
+
+    @Override
+    @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has greater than {minCount} records")
+    public void seeRecordsCountInCollectionIsGreaterThan(String collectionName, int minCount) {
+        seeRecordsCountInCollectionIsGreaterThanMethod(collectionName, minCount, await());
     }
 
     @Override
     @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> is not empty")
     public void seeCollectionIsEmpty(String collectionName) {
-        seeCollectionIsEmptyMethod(collectionName);
+        seeCollectionIsEmptyMethod(collectionName, await());
     }
 
     @Override
     @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> is empty")
     public void seeCollectionIsNotEmpty(String collectionName) {
-        seeCollectionIsNotEmptyMethod(collectionName);
+        seeCollectionIsNotEmptyMethod(collectionName, await());
     }
 
     @Override
     @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has record CONTAINS JSON")
     public void seeRecordPartExistsInCollection(String collectionName, @Param(mode = HIDDEN) String json) {
         attachCanBeNull("Expected part:", json);
-        assertRecordExists(collectionName, json, false);
+        assertRecordExists(collectionName, json, false, await());
     }
 
     @Override
     @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has record EQUAL to JSON")
     public void seeRecordExistsInCollection(String collectionName, @Param(mode = HIDDEN) String json) {
         attachCanBeNull("Expected:", json);
-        assertRecordExists(collectionName, json, true);
+        assertRecordExists(collectionName, json, true, await());
     }
 
+    private int await() {
+        if (specificAwaitMs.get() != 0) {
+            int result = specificAwaitMs.get();
+            specificAwaitMs.remove();
+            return result;
+        } else {
+            return awaitMs;
+        }
+    }
 }
