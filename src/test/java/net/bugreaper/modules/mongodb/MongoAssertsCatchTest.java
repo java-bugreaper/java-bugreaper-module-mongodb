@@ -36,17 +36,17 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
 
 
         Throwable exception1 = assertThrows(AssertionError.class, () ->
-                mg.withAwaitMs(210).seeRecordsCountInCollectionExactly(COLLECTION, 2 ));
+                mg.withAwaitMs(210).seeDocumentsCountInCollectionExactly(COLLECTION, 2 ));
 
         assertEquals(
-                String.format("Count records from collection <%s> expected to be EXACTLY <2> but got <1> within 210 milliseconds", COLLECTION),
+                String.format("Expected EXACTLY <2> documents in collection '%s', but got <1> within 210 milliseconds", COLLECTION),
                 exception1.getMessage());
 
         Throwable exception2 = assertThrows(AssertionError.class, () ->
-                mg.seeRecordsCountInCollectionExactly(COLLECTION, 2 ));
+                mg.seeDocumentsCountInCollectionExactly(COLLECTION, 2 ));
 
         assertEquals(
-                String.format("Count records from collection <%s> expected to be EXACTLY <2> but got <1> within 400 milliseconds", COLLECTION),
+                String.format("Expected EXACTLY <2> documents in collection '%s', but got <1> within 400 milliseconds", COLLECTION),
                 exception2.getMessage());
     }
 
@@ -57,14 +57,14 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
                 mg.withAwaitMs(200).seeCollectionIsNotEmpty(COLLECTION));
 
         assertEquals(
-                String.format("Collection <%s> expected to be not empty but got no records within 200 milliseconds", COLLECTION),
+                String.format("Expected collection '%s' to be not empty, but got no documents within 200 milliseconds", COLLECTION),
                 exception1.getMessage());
 
         Throwable exception2 = assertThrows(AssertionError.class, () ->
                 mg.seeCollectionIsNotEmpty(COLLECTION));
 
         assertEquals(
-                String.format("Collection <%s> expected to be not empty but got no records within 400 milliseconds", COLLECTION),
+                String.format("Expected collection '%s' to be not empty, but got no documents within 400 milliseconds", COLLECTION),
                 exception2.getMessage());
     }
 
@@ -84,7 +84,7 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
 
 
         assertEquals(
-                String.format("Collection <%s> expected to be empty but got <1> records within 200 milliseconds", COLLECTION),
+                String.format("Expected collection '%s' to be empty, but got <1> documents within 200 milliseconds", COLLECTION),
                 exception1.getMessage());
 
         Throwable exception2 = assertThrows(AssertionError.class, () ->
@@ -92,7 +92,7 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
 
 
         assertEquals(
-                String.format("Collection <%s> expected to be empty but got <1> records within 400 milliseconds", COLLECTION),
+                String.format("Expected collection '%s' to be empty, but got <1> documents within 400 milliseconds", COLLECTION),
                 exception2.getMessage());
     }
 
@@ -100,17 +100,17 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
     void seeCollectionCountGraterEmptyTest(){
 
         Throwable exception1 = assertThrows(AssertionError.class, () ->
-                mg.withAwaitMs(200).seeRecordsCountInCollectionIsGreaterThan(COLLECTION, 1));
+                mg.withAwaitMs(200).seeDocumentsCountInCollectionIsGreaterThan(COLLECTION, 1));
 
         assertEquals(
-                String.format("Count records from collection <%s> expected to be GREATER than <1> but got <0> within 200 milliseconds", COLLECTION),
+                String.format("Expected the number of documents in collection '%s' to be GREATER than <1>, but got <0> within 200 milliseconds", COLLECTION),
                 exception1.getMessage());
 
         Throwable exception2 = assertThrows(AssertionError.class, () ->
-                mg.seeRecordsCountInCollectionIsGreaterThan(COLLECTION, 1));
+                mg.seeDocumentsCountInCollectionIsGreaterThan(COLLECTION, 1));
 
         assertEquals(
-                String.format("Count records from collection <%s> expected to be GREATER than <1> but got <0> within 400 milliseconds", COLLECTION),
+                String.format("Expected the number of documents in collection '%s' to be GREATER than <1>, but got <0> within 400 milliseconds", COLLECTION),
                 exception2.getMessage());
     }
 
@@ -118,11 +118,11 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
     void seeCollectionCountGraterOneTest(){
 
         Throwable exception1 = assertThrows(AssertionError.class, () ->
-                mg.withAwaitMs(200).seeRecordsCountInCollectionIsGreaterThan(COLLECTION, 1));
+                mg.withAwaitMs(200).seeDocumentsCountInCollectionIsGreaterThan(COLLECTION, 1));
 
         MatcherAssert.assertThat(
                 exception1.getMessage(),
-                StringContains.containsString(String.format("Count records from collection <%s> expected to be GREATER than <1> but got <0> within 200 milliseconds", COLLECTION)));
+                StringContains.containsString(String.format("Expected the number of documents in collection '%s' to be GREATER than <1>, but got <0> within 200", COLLECTION)));
 
         mg.insertIntoCollection(
                 COLLECTION,
@@ -133,11 +133,11 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
         );
 
         Throwable exception2 = assertThrows(AssertionError.class, () ->
-                mg.seeRecordsCountInCollectionIsGreaterThan(COLLECTION, 1));
+                mg.seeDocumentsCountInCollectionIsGreaterThan(COLLECTION, 1));
 
         MatcherAssert.assertThat(
                 exception2.getMessage(),
-                StringContains.containsString(String.format("Count records from collection <%s> expected to be GREATER than <1> but got <1> within 400 milliseconds", COLLECTION)));
+                StringContains.containsString(String.format("Expected the number of documents in collection '%s' to be GREATER than <1>, but got <1> within 400 milliseconds", COLLECTION)));
     }
 
     @Test
@@ -153,7 +153,7 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
                 ));
 
         assertEquals(
-                "File not exist in resources: templates/mongodb/not.exist.json",
+                "File does not exist in resources: templates/mongodb/not.exist.json",
                 exception.getMessage());
     }
 
@@ -176,14 +176,14 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
                         }""";
 
         Throwable exception = assertThrows(AssertionError.class, () ->
-                mg.seeRecordPartExistsInCollection(
+                mg.seeDocumentPartExistsInCollection(
                         COLLECTION,
                         expected
                 ));
 
         assertEquals(String.format("""
-                        No CONTAINS matching record found in collection <%s> within 400 milliseconds 
-                        Checked records: 1
+                        No CONTAINS matching document found in collection '%s' within 400 milliseconds 
+                        Checked documents: 1
                         
                         Expected:
                         {
@@ -236,14 +236,14 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
                         }""";
 
         Throwable exception = assertThrows(AssertionError.class, () ->
-                mgSize.seeRecordPartExistsInCollection(
+                mgSize.seeDocumentPartExistsInCollection(
                         COLLECTION,
                         expected
                 ));
 
         assertEquals(String.format("""
-                        No CONTAINS matching record found in collection <%s> within 2 seconds
-                        Checked records: 1
+                        No CONTAINS matching document found in collection '%s' within 2 seconds
+                        Checked documents: 1
                         
                         Expected:
                         {
@@ -287,7 +287,7 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
         );
 
         Throwable exception = assertThrows(AssertionError.class, () ->
-                mg.seeRecordExistsInCollection(
+                mg.seeDocumentExistsInCollection(
                         COLLECTION,
                         """
                         {
@@ -297,8 +297,8 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
                 ));
 
         assertEquals(String.format("""
-                        No STRICT matching record found in collection <%s> within 400 milliseconds
-                        Checked records: 2
+                        No STRICT matching document found in collection '%s' within 400 milliseconds
+                        Checked documents: 2
                         
                         Expected:
                         {
@@ -347,7 +347,7 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
         );
 
         Throwable exception = assertThrows(AssertionError.class, () ->
-                mg.seeRecordExistsInCollection(
+                mg.seeDocumentExistsInCollection(
                         COLLECTION,
                         """
                         {
@@ -357,8 +357,8 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
                 ));
 
         assertEquals(String.format("""
-                        No STRICT matching record found in collection <%s> within 400 milliseconds
-                        Checked records: 1
+                        No STRICT matching document found in collection '%s' within 400 milliseconds
+                        Checked documents: 1
                                                
                         Expected:
                         {
@@ -387,7 +387,7 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
     void equalNoRecordTest(){
 
         Throwable exception1 = assertThrows(AssertionError.class, () ->
-                mg.withAwaitMs(200).seeRecordExistsInCollection(
+                mg.withAwaitMs(200).seeDocumentExistsInCollection(
                         COLLECTION,
                         """
                         {
@@ -396,11 +396,11 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
                         """
                 ));
 
-        assertEquals(String.format("Collection <%s> got no records within 200 milliseconds", COLLECTION),
+        assertEquals(String.format("Collection '%s' contains no documents within 200 milliseconds", COLLECTION),
                 exception1.getMessage());
 
         Throwable exception2 = assertThrows(AssertionError.class, () ->
-                mg.seeRecordExistsInCollection(
+                mg.seeDocumentExistsInCollection(
                         COLLECTION,
                         """
                         {
@@ -409,7 +409,7 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
                         """
                 ));
 
-        assertEquals(String.format("Collection <%s> got no records within 400 milliseconds", COLLECTION),
+        assertEquals(String.format("Collection '%s' contains no documents within 400 milliseconds", COLLECTION),
                 exception2.getMessage());
 
     }
@@ -422,7 +422,7 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
         Throwable exception = assertThrows(AssertionError.class, () ->
                 mg.grabDocumentsFromCollection(COLLECTION));
 
-        assertEquals(String.format("Collection <%s> expected to be not empty but got no records within 200 milliseconds", COLLECTION),
+        assertEquals(String.format("Expected collection '%s' to be not empty, but got no documents within 200 milliseconds", COLLECTION),
                 exception.getMessage());
 
     }
@@ -444,7 +444,7 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
         );
 
         Throwable exception1 = assertThrows(AssertionError.class, () ->
-                mg.withAwaitMs(210).seeRecordExistsInCollection(
+                mg.withAwaitMs(210).seeDocumentExistsInCollection(
                         COLLECTION,
                         """
                         {
@@ -457,11 +457,11 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
 
         MatcherAssert.assertThat(
                 exception1.getMessage(),
-                StringContains.containsString(String.format("No STRICT matching record found in collection <%s> within 210 milliseconds", COLLECTION)));
+                StringContains.containsString(String.format("No STRICT matching document found in collection '%s' within 210 milliseconds", COLLECTION)));
 
 
         Throwable exception2 = assertThrows(AssertionError.class, () ->
-                mg.seeRecordExistsInCollection(
+                mg.seeDocumentExistsInCollection(
                         COLLECTION,
                         """
                         {
@@ -473,8 +473,8 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
                 ));
 
         assertEquals(String.format("""
-                        No STRICT matching record found in collection <%s> within 400 milliseconds
-                        Checked records: 1
+                        No STRICT matching document found in collection '%s' within 400 milliseconds
+                        Checked documents: 1
                         
                         Expected:
                         {
@@ -523,7 +523,7 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
         );
 
         Throwable exception = assertThrows(AssertionError.class, () ->
-                mg.seeRecordExistsInCollection(
+                mg.seeDocumentExistsInCollection(
                         COLLECTION,
                         """
                         {
@@ -535,8 +535,8 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
                 ));
 
         assertEquals(String.format("""
-                        No STRICT matching record found in collection <%s> within 400 milliseconds
-                        Checked records: 1
+                        No STRICT matching document found in collection '%s' within 400 milliseconds
+                        Checked documents: 1
                         
                         Expected:
                         {
@@ -586,7 +586,7 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
         );
 
         Throwable exception = assertThrows(AssertionError.class, () ->
-                mg.seeRecordPartExistsInCollection(
+                mg.seeDocumentPartExistsInCollection(
                         COLLECTION,
                         """
                         {
@@ -598,8 +598,8 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
                 ));
 
         assertEquals(String.format("""
-                        No CONTAINS matching record found in collection <%s> within 400 milliseconds
-                        Checked records: 1
+                        No CONTAINS matching document found in collection '%s' within 400 milliseconds
+                        Checked documents: 1
                         
                         Expected:
                         {
@@ -648,7 +648,7 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
         );
 
         Throwable exception = assertThrows(AssertionError.class, () ->
-                mg.seeRecordExistsInCollection(
+                mg.seeDocumentExistsInCollection(
                         COLLECTION,
                         """
                         {
@@ -660,8 +660,8 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
                 ));
 
         assertEquals(String.format("""
-                        No STRICT matching record found in collection <%s> within 400 milliseconds
-                        Checked records: 1
+                        No STRICT matching document found in collection '%s' within 400 milliseconds
+                        Checked documents: 1
                         
                         Expected:
                         {

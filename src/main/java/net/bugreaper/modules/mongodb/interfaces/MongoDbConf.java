@@ -9,39 +9,43 @@ import net.bugreaper.modules.mongodb.MongoDb;
 public interface MongoDbConf {
 
     /**
-     * Configure global await for asserts with await
+     * Configures the global await timeout for assertions and operations that use await.
      *
-     * @param awaitMs ms await. Must be >= 200
+     * @param awaitMs await timeout in milliseconds
      * @return this instance for method chaining
-     * @throws IllegalArgumentException if {@code awaitMs} is less than 200
+     * @throws IllegalArgumentException if the provided timeout is invalid or less than 200 milliseconds
      */
     MongoDb setAwaitMs(int awaitMs);
 
     /**
-     * Configure await for next assert (or grab) with await (than await rollback to global)
-     * global {@link #setAwaitMs(int)} will be ignored
+     * Configures await timeout for the next assertion or operation that uses await.
      *
-     * @param awaitMs ms await
+     * <p>After execution, the await timeout is reset to the global value configured by
+     * {@link #setAwaitMs(int)}.</p>
+     *
+     * <p>The global await timeout is ignored for this operation.</p>
+     *
+     * @param awaitMs await timeout in milliseconds
      * @return this instance for method chaining
-     * @throws IllegalArgumentException on invalid setup
+     * @throws IllegalArgumentException if the provided timeout is invalid
      */
     MongoDb withAwaitMs(int awaitMs);
 
     /**
-     * Sets the maximum number of last records to be stored for asserts (and other methods).
+     * Sets the maximum number of latest documents to check during assertions and other operations.
      *
-     * @param maxLastRecords the maximum number of last records to store. Must be >= 1.
+     * @param maxLastRecords the maximum number of last documents to store. Must be >= 1.
      * @return this instance for method chaining
      * @throws IllegalArgumentException if {@code maxLastRecords} is less than 1
      */
     MongoDb setMaxLastRecords(int maxLastRecords);
 
     /**
-     * Configure directory in resources for collections templates
+     * Configures the directory in resources containing collection templates.
      *
-     * @param templatePath path in resources {@code "my_dir/sub_dir/"}
+     * @param templatePath path to the templates directory in resources (example: {@code "my_dir/sub_dir/"})
      * @return this instance for method chaining
-     * @throws IllegalArgumentException on invalid setup
+     * @throws IllegalArgumentException if the provided path is invalid
      */
     MongoDb setTemplatesDirectory(String templatePath);
 

@@ -48,7 +48,7 @@ repositories {
 }
 
 dependencies {
-    api 'net.bugreaper:core:1.4.1'
+    api 'net.bugreaper:core:1.4.3'
     api 'org.mongodb:mongodb-driver-sync:5.1.0'
 
     testImplementation "org.testcontainers:testcontainers-mongodb:2.0.5"

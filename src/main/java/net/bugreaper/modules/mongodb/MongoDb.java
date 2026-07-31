@@ -15,12 +15,14 @@ import static io.qameta.allure.model.Parameter.Mode.HIDDEN;
 import static net.bugreaper.core.allurereporter.AllureReporter.attachCanBeNull;
 
 /**
- * Class consists methods that operate with MongoDb
+ * MongoDB helper that provides a common API for operating with MongoDB.
  *
- * <p>For one instance run recommended: {@code MongoDb mongo = MongoDb.getInstance();}</p>
+ * <p>Recommended to use one instance:
+ * {@code MongoDb mongo = MongoDb.getInstance();}
+ * </p>
  *
- *
- * <p> Await for some asserts default: {@link #awaitMs}, can be changed by: {@link #setAwaitMs(int)}
+ * <p>Default await timeout for assertions with await is configured by {@link #awaitMs}.
+ * It can be changed using {@link #setAwaitMs(int)} or configuration.</p>
  *
  * @author Oleksii Betin "ambu550"
  * @since 1.0.0
@@ -56,7 +58,7 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
     }
 
     /**
-     * Constructs a MongoDb client configuration.
+     * Constructs a MongoDb client using YAML configuration.
      *
      * <p>Loads configuration values from a YAML file.</p>
      *
@@ -68,12 +70,14 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
      *   mongodb:
      *     url: 'mongodb://root:example_password@localhost:27017'
      *     database: test_db
-     *     await: 420 # optional
-     *     documents-max-count: 15 # optional
+     *     await: 420 # (optional) await timeout in milliseconds
+     *     documents-max-count: 15 # (optional) maximum number of documents to check
      * </pre>
      *
      * <p>Missing required keys will result in configuration errors.
      * Missing optional keys will fall back to predefined defaults.</p>
+     *
+     * @throws IllegalArgumentException if the configuration contains invalid values
      */
     public MongoDb() {
         //required config fields
@@ -159,7 +163,7 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
         insertIntoCollectionMethod(collectionName, json);
     }
 
-     @Override
+    @Override
     @Step("(MongoDb) Insert into collection <{collectionName}>")
     public void insertTemplateIntoCollection(String collectionName, String providedJson) {
         insertIntoCollectionTemplateMethod(collectionName, providedJson);
@@ -170,7 +174,7 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
 
     @Override
     // no step
-    public int getRecordsCountInCollection(String collectionName) {
+    public int getDocumentsCountInCollection(String collectionName) {
         return getRecordsCountInCollectionMethod(collectionName);
     }
 
@@ -183,14 +187,14 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
     // Asserts
 
     @Override
-    @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has exactly {expectedCount} records")
-    public void seeRecordsCountInCollectionExactly(String collectionName, int expectedCount) {
+    @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has exactly {expectedCount} documents")
+    public void seeDocumentsCountInCollectionExactly(String collectionName, int expectedCount) {
         seeRecordsCountInCollectionExactlyMethod(collectionName, expectedCount, await());
     }
 
     @Override
-    @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has greater than {minCount} records")
-    public void seeRecordsCountInCollectionIsGreaterThan(String collectionName, int minCount) {
+    @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has greater than {minCount} documents")
+    public void seeDocumentsCountInCollectionIsGreaterThan(String collectionName, int minCount) {
         seeRecordsCountInCollectionIsGreaterThanMethod(collectionName, minCount, await());
     }
 
@@ -207,15 +211,15 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
     }
 
     @Override
-    @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has record CONTAINS JSON")
-    public void seeRecordPartExistsInCollection(String collectionName, @Param(mode = HIDDEN) String json) {
+    @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has a document CONTAINS JSON")
+    public void seeDocumentPartExistsInCollection(String collectionName, @Param(mode = HIDDEN) String json) {
         attachCanBeNull("Expected part:", json);
         assertRecordExists(collectionName, json, false, await());
     }
 
     @Override
-    @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has record EQUAL to JSON")
-    public void seeRecordExistsInCollection(String collectionName, @Param(mode = HIDDEN) String json) {
+    @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has a document EQUAL to JSON")
+    public void seeDocumentExistsInCollection(String collectionName, @Param(mode = HIDDEN) String json) {
         attachCanBeNull("Expected:", json);
         assertRecordExists(collectionName, json, true, await());
     }

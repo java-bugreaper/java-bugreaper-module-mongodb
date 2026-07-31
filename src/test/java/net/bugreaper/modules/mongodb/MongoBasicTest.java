@@ -30,7 +30,8 @@ class MongoBasicTest extends MongoContainerSetup {
     }
 
     @BeforeEach
-    void setup() {
+    void clean(){
+        mg.cleanCollection(COLLECTION);
         logWatcher = new LogWatcher("bugreaper-module-mongodb", Level.DEBUG);
     }
 
@@ -39,12 +40,6 @@ class MongoBasicTest extends MongoContainerSetup {
         logWatcher.detach();
     }
 
-
-    @BeforeEach
-    void clean(){
-        mg.cleanCollection(COLLECTION);
-    }
-    
     
     @Test
     void emptyNotEmptyTest(){
@@ -52,7 +47,7 @@ class MongoBasicTest extends MongoContainerSetup {
         mg.cleanCollection(COLLECTION);
 
         mg.seeCollectionIsEmpty(COLLECTION);
-        mg.seeRecordsCountInCollectionExactly(COLLECTION, 0);
+        mg.seeDocumentsCountInCollectionExactly(COLLECTION, 0);
 
         mg.insertIntoCollection(
                 COLLECTION,
@@ -63,8 +58,8 @@ class MongoBasicTest extends MongoContainerSetup {
         );
 
         mg.seeCollectionIsNotEmpty(COLLECTION);
-        mg.seeRecordsCountInCollectionExactly(COLLECTION, 1);
-        assertEquals(1, mg.getRecordsCountInCollection(COLLECTION));
+        mg.seeDocumentsCountInCollectionExactly(COLLECTION, 1);
+        assertEquals(1, mg.getDocumentsCountInCollection(COLLECTION));
     }
 
     @Test
@@ -81,7 +76,7 @@ class MongoBasicTest extends MongoContainerSetup {
                         }"""
                 );
 
-        mg.seeRecordPartExistsInCollection(
+        mg.seeDocumentPartExistsInCollection(
                 COLLECTION,
                 """
                 {
@@ -90,7 +85,7 @@ class MongoBasicTest extends MongoContainerSetup {
                 """
         );
 
-        mg.seeRecordExistsInCollection(
+        mg.seeDocumentExistsInCollection(
                 COLLECTION,
                 """
                         {
@@ -99,7 +94,7 @@ class MongoBasicTest extends MongoContainerSetup {
                         }"""
         );
 
-        mg.seeRecordsCountInCollectionExactly(COLLECTION, 1);
+        mg.seeDocumentsCountInCollectionExactly(COLLECTION, 1);
 
     }
 
@@ -120,7 +115,7 @@ class MongoBasicTest extends MongoContainerSetup {
                         }"""
         );
 
-        mg.seeRecordPartExistsInCollection(
+        mg.seeDocumentPartExistsInCollection(
                 COLLECTION,
                 """
                         {
@@ -130,7 +125,7 @@ class MongoBasicTest extends MongoContainerSetup {
                          }"""
         );
 
-        mg.seeRecordExistsInCollection(
+        mg.seeDocumentExistsInCollection(
                 COLLECTION,
                 """
                         {
@@ -141,7 +136,7 @@ class MongoBasicTest extends MongoContainerSetup {
                         }"""
         );
 
-        mg.seeRecordsCountInCollectionExactly(COLLECTION, 1);
+        mg.seeDocumentsCountInCollectionExactly(COLLECTION, 1);
 
     }
 
@@ -161,9 +156,9 @@ class MongoBasicTest extends MongoContainerSetup {
                             }
                         }""");
 
-        mg.seeRecordsCountInCollectionExactly(COLLECTION, 1);
+        mg.seeDocumentsCountInCollectionExactly(COLLECTION, 1);
 
-        mg.seeRecordPartExistsInCollection(
+        mg.seeDocumentPartExistsInCollection(
                 COLLECTION,
                 """
                         {
@@ -174,7 +169,7 @@ class MongoBasicTest extends MongoContainerSetup {
                          }"""
         );
 
-        mg.seeRecordExistsInCollection(
+        mg.seeDocumentExistsInCollection(
                 COLLECTION,
                 """
                         {
@@ -218,9 +213,9 @@ class MongoBasicTest extends MongoContainerSetup {
                         }"""
         );
 
-        mg.seeRecordsCountInCollectionExactly(COLLECTION, 2);
-        mg.seeRecordsCountInCollectionIsGreaterThan(COLLECTION, 1);
-        mg.seeRecordsCountInCollectionExactly("test2.users2", 1);
+        mg.seeDocumentsCountInCollectionExactly(COLLECTION, 2);
+        mg.seeDocumentsCountInCollectionIsGreaterThan(COLLECTION, 1);
+        mg.seeDocumentsCountInCollectionExactly("test2.users2", 1);
     }
 
 
@@ -237,7 +232,7 @@ class MongoBasicTest extends MongoContainerSetup {
                         }"""
         );
 
-        mg.seeRecordsCountInCollectionExactly("test_db.my.collect", 1);
+        mg.seeDocumentsCountInCollectionExactly("test_db.my.collect", 1);
     }
 
     @Test
@@ -278,9 +273,9 @@ class MongoBasicTest extends MongoContainerSetup {
                         }"""
         );
 
-        mg.seeRecordsCountInCollectionExactly(COLLECTION, 4);
+        mg.seeDocumentsCountInCollectionExactly(COLLECTION, 4);
 
-        mg.seeRecordExistsInCollection(
+        mg.seeDocumentExistsInCollection(
                 COLLECTION,
                 """
                   {
@@ -340,14 +335,14 @@ class MongoBasicTest extends MongoContainerSetup {
         );
 
 
-        mgSize.seeRecordsCountInCollectionExactly(COLLECTION, 3);
+        mgSize.seeDocumentsCountInCollectionExactly(COLLECTION, 3);
 
-        mgSize.seeRecordExistsInCollection(
+        mgSize.seeDocumentExistsInCollection(
                 COLLECTION,"""
                         {"name": "Anna", "age": 25}"""
         );
 
-        mgSize.seeRecordExistsInCollection(
+        mgSize.seeDocumentExistsInCollection(
                 COLLECTION,"""
                          {"name": "Max", "age": 33}"""
         );
@@ -355,7 +350,7 @@ class MongoBasicTest extends MongoContainerSetup {
 
         logWatcher.clear();
         assertThrows(AssertionError.class, () ->
-                mgSize.seeRecordPartExistsInCollection(
+                mgSize.seeDocumentPartExistsInCollection(
                         COLLECTION,"""
                          {"age": 26}"""
                 ));
@@ -363,7 +358,7 @@ class MongoBasicTest extends MongoContainerSetup {
         //warning log only on assert failed!
         assertEquals(
                 """
-                [[WARN] Count of documents in collection <users> is <3>: more than maxLastRecords(2) in config
+                [[WARN] Number of documents in collection 'users' is <3>: more than maxLastRecords(2) in config
                 only last documents will be taken into account (can be changed by .setMaxLastRecords(int) or config 'documents-max-count')]""",
                 logWatcher.getLoggedEvents(Level.WARN).toString());
 
@@ -390,12 +385,12 @@ class MongoBasicTest extends MongoContainerSetup {
         AllureAssert.assertThat(result)
 
 
-                .hasStep("(MongoDb)[ASSERT] Collection: <users> has record EQUAL to JSON")
+                .hasStep("(MongoDb)[ASSERT] Collection: <users> has a document EQUAL to JSON")
                 .hasAttachment("Expected:", """
                        {"name": "Anna", "age": 25}""")
 
 
-                .hasStep("(MongoDb)[ASSERT] Collection: <users> has record CONTAINS JSON")
+                .hasStep("(MongoDb)[ASSERT] Collection: <users> has a document CONTAINS JSON")
                 .hasAttachment("Expected part:", """
                         {"age": 26}""")
                 .hasAttachment("Differences:", """
@@ -498,7 +493,7 @@ class MongoBasicTest extends MongoContainerSetup {
                 "[[DEBUG] Looking for template file in resources: templates/mongodb/users.json]",
                 logWatcher.getLoggedEvents(Level.DEBUG).toString());
 
-        mg.seeRecordExistsInCollection(COLLECTION,
+        mg.seeDocumentExistsInCollection(COLLECTION,
                 """
                         {
                           "id": 2,
@@ -540,7 +535,7 @@ class MongoBasicTest extends MongoContainerSetup {
                         }"""
         );
 
-        mg.seeRecordExistsInCollection(COLLECTION,
+        mg.seeDocumentExistsInCollection(COLLECTION,
                 """
                         {
                           "id": 2,
@@ -579,7 +574,7 @@ class MongoBasicTest extends MongoContainerSetup {
                 "[[DEBUG] Looking for template file in resources: templates/new-mongo/my_new_db.new.users.json]",
                 logWatcher.getLoggedEvents(Level.DEBUG).toString());
 
-        mgCustom.seeRecordExistsInCollection(collection,
+        mgCustom.seeDocumentExistsInCollection(collection,
                 """
                         {
                           "id": 2,
