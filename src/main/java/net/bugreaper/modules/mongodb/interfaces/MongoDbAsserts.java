@@ -1,59 +1,63 @@
 package net.bugreaper.modules.mongodb.interfaces;
 
 
-import net.bugreaper.modules.mongodb.matcher.JsonMatcher;
-
 /**
  * Interface describes methods responsible for helper assertions.
  * Validates that all required methods are implemented.
  */
 public interface MongoDbAsserts {
 
-   /**
-    * Assert that count of records in collection is equal to expected
-    * <p><b>with await</b>
-    *
-    * @param collectionName collection name
-    * @param expectedCount expected count
-    * @throws AssertionError on assert fail
-    */
-    void seeRecordsCountInCollectionExactly(String collectionName, int expectedCount);
-
     /**
-     * Assert number of documents in collection greater than minSize
-     * <p><b>with await</b>
+     * Asserts that the number of documents in the collection is exactly the expected count.
+     * <p><b>Uses await.</b></p>
      *
      * @param collectionName collection name
-     * @param minCount minimum count
-     * @throws AssertionError on assert fail
+     * @param expectedCount  expected number of documents
+     * @throws AssertionError if the assertion fails
      */
-    void seeRecordsCountInCollectionIsGreaterThan(String collectionName, int minCount);
+    void seeDocumentsCountInCollectionExactly(String collectionName, int expectedCount);
+
+    /**
+     * Asserts that the number of documents in the collection is greater than the specified minimum count.
+     *
+     * <p><b>Uses await.</b></p>
+     *
+     * @param collectionName collection name
+     * @param minCount       minimum expected number of documents
+     * @throws AssertionError if the assertion fails
+     */
+    void seeDocumentsCountInCollectionIsGreaterThan(String collectionName, int minCount);
 
 
-   /**
-    * Assert that collection is empty
-    * <p><b>with await</b>
-    *
-    * @param collectionName collection name
-    * @throws AssertionError on assert fail
-    */
+    /**
+     * Asserts that the collection is empty.
+     * <p><b>Uses await.</b></p>
+     *
+     * @param collectionName collection name
+     * @throws AssertionError if the assertion fails
+     */
     void seeCollectionIsEmpty(String collectionName);
 
-   /**
-    * Assert that collection is not empty
-    * <p><b>with await</b>
-    *
-    * @param collectionName collection name
-    * @throws AssertionError on assert fail
-    */
+    /**
+     * Asserts that the collection is not empty
+     * <p><b>Uses await.</b></p>
+     *
+     * @param collectionName collection name
+     * @throws AssertionError if the assertion fails
+     */
     void seeCollectionIsNotEmpty(String collectionName);
 
     /**
-     * Assert that exists at least one record CONTAINS JSON without strict order
-     * <p><b>await for at least one Document exist in collection</b>
-     * <p><b>Extensible fields and elements in array <u>will be skipped</u></b></p>
-     * <p>Wrap this method with collection name to provide only json</p>
-     * <p>max count of documents set in config (only the latest documents are checked sorted from the latest to the oldest)</p>
+     * Asserts that at least one document contains the expected JSON without strict array ordering.
+     *
+     * <p><b>Uses await until at least one document exists in the collection.</b></p>
+     *
+     * <p><b>Extra fields and array elements are ignored.</b></p>
+     *
+     * <p>Wrap this method with the collection name to provide only the JSON data.</p>
+     *
+     * <p>The maximum number of documents to check is configured globally.
+     * Only the latest documents are checked, sorted from newest to oldest.</p>
      *
      * <p>Usage Example:</p>
      * <pre>{@code
@@ -69,18 +73,24 @@ public interface MongoDbAsserts {
      * }</pre>
      *
      * @param collectionName collection name
-     * @param json     record in Json format
-     * @throws AssertionError on assert fail
+     * @param json           document in JSON format
+     * @throws AssertionError if the assertion fails
      */
-    void seeRecordPartExistsInCollection(String collectionName, String json);
+    void seeDocumentPartExistsInCollection(String collectionName, String json);
 
     /**
-     * Assert that exists at least one record STRICT EQUAL to JSON with strict array order
-     * <p><b>await for at least one Document exist in collection</b>
-     * <p><b>Extensible fields and elements in arrays <u>not expected</u></b></p>
-     * <b>Ignore Mongo auto-generated field {@link JsonMatcher#IGNORED_FIELD}</b>
-     * <p>Wrap this method with collection name to provide only json</p>
-     * <p>max count of documents set in config (only the latest documents are checked sorted from the latest to the oldest)</p>
+     * Asserts that at least one document is strictly equal to the expected JSON with strict array ordering.
+     *
+     * <p><b>Uses await until at least one document exists in the collection.</b></p>
+     *
+     * <p><b>Extra fields and array elements are not expected.</b></p>
+     *
+     * <p>MongoDB auto-generated field {@code _id} is ignored.</p>
+     *
+     * <p>Wrap this method with the collection name to provide only JSON data.</p>
+     *
+     * <p>The maximum number of documents to check is configured globally.
+     * Only the latest documents are checked, sorted from newest to oldest.</p>
      *
      * <p>Usage Example:</p>
      * <pre>{@code
@@ -97,9 +107,9 @@ public interface MongoDbAsserts {
      * }</pre>
      *
      * @param collectionName collection name
-     * @param json     record in Json format
-     * @throws AssertionError on assert fail
+     * @param json           document in JSON format
+     * @throws AssertionError if the assertion fails
      */
-    void seeRecordExistsInCollection(String collectionName, String json);
+    void seeDocumentExistsInCollection(String collectionName, String json);
 
 }

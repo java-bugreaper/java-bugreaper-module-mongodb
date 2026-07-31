@@ -1,7 +1,6 @@
 package net.bugreaper.modules.mongodb.interfaces;
 
 import net.bugreaper.core.assertable.AssertableStringList;
-import net.bugreaper.core.assertions.JsonAsserts;
 import net.bugreaper.core.mappers.JsonMerge;
 
 /**
@@ -11,16 +10,15 @@ import net.bugreaper.core.mappers.JsonMerge;
 public interface MongoDbInter {
 
     /**
-     * Delete all records in collection
+     * Deletes all documents from the collection.
      *
      * @param collectionName collection name
      */
     void cleanCollection(String collectionName);
 
     /**
-     * Insert record to collection
-     * <p>Wrap this method with collection name to provide only json</p>
-     * * <p>Same behavior as {@link JsonAsserts#assertJsonsExtended(String, String)}.
+     * Inserts a document into the collection.
+     *
      * <p>Usage Example:</p>
      * <pre>{@code
      * mongo.insertIntoCollection(
@@ -36,43 +34,53 @@ public interface MongoDbInter {
      * }</pre>
      *
      * @param collectionName collection name
-     * @param json           record in Json format
+     * @param json           document in JSON format
      */
     void insertIntoCollection(String collectionName, String json);
 
     /**
-     * Performs a recursive (deep) merge Jsons and insert record to collection
+     * Performs a recursive (deep) merge of JSON templates and inserts the resulting document into the collection.
+     *
      * <pre>
-     * example: collectionName: "myCollection"
-     * (will search in resources file templates/mongodb/myCollection.json)
-     * if provide collection with database create same filename!!("mydb.myCollection.json")
-     * default template directory can be changed by setter
+     * Example:
+     * collectionName: "myCollection"
+     *
+     * The method searches for the template file:
+     * templates/mongodb/myCollection.json
+     *
+     * If a database name is provided with the collection, use the same filename format:
+     * "mydb.myCollection.json"
+     *
+     * The default template directory can be changed using the setter.
      * </pre>
      *
      * <p>Same behavior as: <a href="https://bug-reaper.gitlab.io/java-bugreaper-core/apidocs/net/bugreaper/core/mappers/JsonMerge.html#mergeJsonDeep(java.lang.String,java.lang.String)">mergeJsonDeep</a>
      *
      * @param collectionName collection name
-     * @param providedJson   record in Json format
-     * @see JsonMerge#mergeJsonDeep(String, String) merge logic
+     * @param providedJson   document in JSON format
+     * @see JsonMerge#mergeJsonDeep(String, String) for deep merge logic
      */
     void insertTemplateIntoCollection(String collectionName, String providedJson);
 
     /**
-     * Return records count in collection
+     * Returns the number of documents in the collection.
      *
      * @param collectionName collection name
-     * @return int with messages count
+     * @return number of documents in the collection
      */
-    int getRecordsCountInCollection(String collectionName);
+    int getDocumentsCountInCollection(String collectionName);
 
     /**
-     * Grab documents to list
-     * <p>max count of documents set in config (grab last documents sorted from the latest to the oldest)</p>
-     * <p><b>await for at least one Document exist in collection</b>
+     * Grabs documents from the collection into a list.
+     *
+     * <p>The maximum number of documents is configured globally.
+     * Documents are sorted from newest to oldest before returning.</p>
+     *
+     * <p><b>Uses await until at least one document exists in the collection.</b></p>
      *
      * @param collectionName collection name
-     * @return {@link AssertableStringList}
-     * @throws AssertionError if collection is empty
+     * @return {@link AssertableStringList} containing the grabbed documents
+     * @throws AssertionError if the collection is empty
      *
      *                        <p> EXAMPLE:
      *                        {@code grabDocumentsFromCollection("my_collection").seeListHasExactlyCount(4); }

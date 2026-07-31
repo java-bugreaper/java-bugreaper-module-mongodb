@@ -18,7 +18,6 @@ import org.bson.Document;
 import org.bson.json.JsonMode;
 import org.bson.json.JsonWriterSettings;
 
-import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -51,7 +50,7 @@ public abstract class MongoDbAbstract {
     protected volatile int awaitMs = 2000;
 
     /**
-     * Default pagination limit for retrieving the N most recent records from the end of a collection.
+     * Default pagination limit for retrieving the N most recent documents from the end of a collection.
      * This value is used to optimize test data assertions, grab data, show data.
      * Increasing this limit may affect performance if used in high-throughput queries within test suites.
      */
@@ -165,30 +164,29 @@ public abstract class MongoDbAbstract {
         try {
             awaitCustom(providedAwaitMs).until(() -> {
 
-                        List<String> errors = new ArrayList<>();
+                List<String> errors = new ArrayList<>();
 
-                        boolean found = checkRecords(
-                                collectionName,
-                                expected,
-                                strict,
-                                errors,
-                                checkedRecords
-                        );
+                boolean found = checkRecords(
+                        collectionName,
+                        expected,
+                        strict,
+                        errors,
+                        checkedRecords
+                );
 
-                        lastErrors.set(errors);
+                lastErrors.set(errors);
 
-                        //no warning log that read only limit!
+                //no warning log that read only limit!
 
-                        return found;
-                    });
+                return found;
+            });
 
         } catch (ConditionTimeoutException e) {
 
-            if(lastErrors.get().isEmpty()){
+            if (lastErrors.get().isEmpty()) {
                 throw new AssertionError(
-                        MessageFormat.format(
-                                "Collection <{0}> got no records within {1}",
-                                collectionName, formatMilliseconds(providedAwaitMs)));
+                        "Collection '%s' contains no documents within %s"
+                                .formatted(collectionName, formatMilliseconds(providedAwaitMs)));
             }
 
 
@@ -204,15 +202,15 @@ public abstract class MongoDbAbstract {
             throw new AssertionError(
                     String.format(
                             """
-                            No %s matching record found in collection <%s> within %s
-                            Checked records: %d
-    
-                            Expected:
-                            %s
-    
-                            Differences:
-                            %s
-                            """,
+                                    No %s matching document found in collection '%s' within %s
+                                    Checked documents: %d
+                                        
+                                    Expected:
+                                    %s
+                                        
+                                    Differences:
+                                    %s
+                                    """,
                             mode,
                             collectionName,
                             formatMilliseconds(providedAwaitMs),
@@ -261,13 +259,13 @@ public abstract class MongoDbAbstract {
     }
 
     protected void insertIntoCollectionMethod(String collectionName, String json) {
-        attachCanBeNull("add record:", json);
+        attachCanBeNull("add document:", json);
 
         try {
             Document doc = Document.parse(json);
             getCollection(collectionName).insertOne(doc);
-        }catch (Exception e){
-            throw new MongoDBHelperException ("Failed to insert document: " + e.getMessage(), e);
+        } catch (Exception e) {
+            throw new MongoDBHelperException("Failed to insert document: " + e.getMessage(), e);
         }
 
     }
@@ -294,9 +292,8 @@ public abstract class MongoDbAbstract {
 
         } catch (ConditionTimeoutException e) {
             throw new AssertionError(
-                    MessageFormat.format(
-                            "Count records from collection <{0}> expected to be EXACTLY <{1}> but got <{2}> within {3}",
-                            collectionName, expectedCount, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(providedAwaitMs)));
+                    "Expected EXACTLY <%d> documents in collection '%s', but got <%s> within %s"
+                            .formatted(expectedCount, collectionName, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(providedAwaitMs)));
         }
 
     }
@@ -308,9 +305,8 @@ public abstract class MongoDbAbstract {
                     assertGreaterThanExpected(expectedCount, getRecordsCountInCollectionMethod(collectionName)));
         } catch (ConditionTimeoutException e) {
             throw new AssertionError(
-                    MessageFormat.format(
-                            "Count records from collection <{0}> expected to be GREATER than <{1}> but got <{2}> within {3}",
-                            collectionName, expectedCount, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(providedAwaitMs)));
+                    "Expected the number of documents in collection '%s' to be GREATER than <%d>, but got <%d> within %s"
+                            .formatted(collectionName, expectedCount, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(providedAwaitMs)));
         }
     }
 
@@ -322,9 +318,8 @@ public abstract class MongoDbAbstract {
 
         } catch (ConditionTimeoutException e) {
             throw new AssertionError(
-                    MessageFormat.format(
-                            "Collection <{0}> expected to be empty but got <{1}> records within {2}",
-                            collectionName, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(providedAwaitMs)));
+                    "Expected collection '%s' to be empty, but got <%d> documents within %s"
+                            .formatted(collectionName, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(providedAwaitMs)));
         }
 
     }
@@ -336,9 +331,8 @@ public abstract class MongoDbAbstract {
                     assertNotEquals(0, getRecordsCountInCollectionMethod(collectionName)));
         } catch (ConditionTimeoutException e) {
             throw new AssertionError(
-                    MessageFormat.format(
-                            "Collection <{0}> expected to be not empty but got no records within {1}",
-                            collectionName, formatMilliseconds(providedAwaitMs)));
+                    "Expected collection '%s' to be not empty, but got no documents within %s"
+                            .formatted(collectionName, formatMilliseconds(providedAwaitMs)));
         }
 
     }
@@ -350,7 +344,7 @@ public abstract class MongoDbAbstract {
 
         if (cnt > maxLastRecords) {
             Log.LOGGER.warn("""
-                    Count of documents in collection <{}> is <{}>: more than maxLastRecords({}) in config
+                    Number of documents in collection '{}' is <{}>: more than maxLastRecords({}) in config
                     only last documents will be taken into account (can be changed by .setMaxLastRecords(int) or config 'documents-max-count')""", collectionName, cnt, maxLastRecords);
         }
     }

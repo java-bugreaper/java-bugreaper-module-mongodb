@@ -32,7 +32,7 @@ class MongoBasicParallelTest extends MongoContainerSetup {
     void parallelObjTest(){
 
         CompletableFuture<Void> future1 = CompletableFuture.runAsync(() -> mg.seeCollectionIsNotEmpty(COLLECTION));
-        CompletableFuture<Void> future2 = CompletableFuture.runAsync(() -> mg.seeRecordExistsInCollection(COLLECTION, """
+        CompletableFuture<Void> future2 = CompletableFuture.runAsync(() -> mg.seeDocumentExistsInCollection(COLLECTION, """
                 {
                     "name": "Anna"
                 }"""));
@@ -47,7 +47,7 @@ class MongoBasicParallelTest extends MongoContainerSetup {
 
 
         CompletableFuture<Void> future1 = CompletableFuture.runAsync(() -> mgConf.seeCollectionIsNotEmpty(COLLECTION2));
-        CompletableFuture<Void> future2 = CompletableFuture.runAsync(() -> mgConf.seeRecordExistsInCollection(COLLECTION2, """
+        CompletableFuture<Void> future2 = CompletableFuture.runAsync(() -> mgConf.seeDocumentExistsInCollection(COLLECTION2, """
                 {
                     "name": "Alex"
                 }"""));
