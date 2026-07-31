@@ -54,7 +54,7 @@ public abstract class MongoDbAbstract {
      * This value is used to optimize test data assertions, grab data, show data.
      * Increasing this limit may affect performance if used in high-throughput queries within test suites.
      */
-    protected volatile int maxLastRecords = 50;
+    protected volatile int maxLastDocuments = 50;
 
     /**
      * default templates path for insert
@@ -122,7 +122,7 @@ public abstract class MongoDbAbstract {
 
     protected AssertableStringList grabDocumentsFromCollectionMethod(String collectionName, int providedAwaitMs) {
 
-        seeCollectionIsNotEmptyMethod(collectionName, providedAwaitMs);
+        waitForFirsDocument(collectionName, providedAwaitMs);
         preCheckDocumentsCount(collectionName);
 
         JsonWriterSettings pretty = JsonWriterSettings.builder()
@@ -135,14 +135,14 @@ public abstract class MongoDbAbstract {
         getCollection(collectionName)
                 .find()
                 .sort(descending("_id")) // get latest first
-                .limit(maxLastRecords)
+                .limit(maxLastDocuments)
                 .forEach(doc -> actualList.add(doc.toJson(pretty)));
 
         if (Log.LOGGER.isDebugEnabled()) {
-            Log.LOGGER.debug("List of messages: {}", listToString(actualList));
+            Log.LOGGER.debug("List of messages:\n{}", listToString(actualList));
         }
 
-        Log.LOGGER.info("Documents grabbed from collection <{}>: {}", collectionName, actualList.size());
+        Log.LOGGER.info("Documents grabbed from collection '{}': {}", collectionName, actualList.size());
         attachFromList(String.format("Documents(%d) list:", actualList.size()), actualList);
 
         return new AssertableStringList(actualList);
@@ -231,7 +231,7 @@ public abstract class MongoDbAbstract {
         List<Document> records = getCollection(collectionName)
                 .find()
                 .sort(Sorts.descending("_id"))
-                .limit(maxLastRecords)
+                .limit(maxLastDocuments)
                 .into(new ArrayList<>());
 
         checkedRecords.set(records.size());
@@ -292,7 +292,7 @@ public abstract class MongoDbAbstract {
 
         } catch (ConditionTimeoutException e) {
             throw new AssertionError(
-                    "Expected EXACTLY <%d> documents in collection '%s', but got <%s> within %s"
+                    "Expected EXACTLY <%d> documents in collection '%s', but got <%d> within %s"
                             .formatted(expectedCount, collectionName, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(providedAwaitMs)));
         }
 
@@ -324,6 +324,17 @@ public abstract class MongoDbAbstract {
 
     }
 
+    private void waitForFirsDocument(String collectionName, int providedAwaitMs) {
+        try {
+            awaitCustom(providedAwaitMs).untilAsserted(() ->
+                    assertNotEquals(0, getRecordsCountInCollectionMethod(collectionName)));
+        } catch (ConditionTimeoutException e) {
+            throw new ConditionTimeoutException(
+                    "No documents were received from collection '%s' within %s"
+                            .formatted(collectionName, formatMilliseconds(providedAwaitMs)));
+        }
+    }
+
     protected void seeCollectionIsNotEmptyMethod(String collectionName, int providedAwaitMs) {
 
         try {
@@ -342,10 +353,10 @@ public abstract class MongoDbAbstract {
 
         int cnt = getRecordsCountInCollectionMethod(collectionName);
 
-        if (cnt > maxLastRecords) {
+        if (cnt > maxLastDocuments) {
             Log.LOGGER.warn("""
                     Number of documents in collection '{}' is <{}>: more than maxLastRecords({}) in config
-                    only last documents will be taken into account (can be changed by .setMaxLastRecords(int) or config 'documents-max-count')""", collectionName, cnt, maxLastRecords);
+                    only last documents will be taken into account (can be changed by .setMaxLastRecords(int) or config 'documents-max-count')""", collectionName, cnt, maxLastDocuments);
         }
     }
 }

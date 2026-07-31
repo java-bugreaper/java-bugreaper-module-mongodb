@@ -1,6 +1,7 @@
 package net.bugreaper.modules.mongodb;
 
 import net.bugreaper.core.exceptions.FileReaderException;
+import org.awaitility.core.ConditionTimeoutException;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.core.StringContains;
 import org.junit.jupiter.api.BeforeEach;
@@ -209,7 +210,7 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
     @Test
     void containsRecordsTest(){
 
-        MongoDb mgSize = getMongo().setMaxLastRecords(1);
+        MongoDb mgSize = getMongo().setMaxLastDocuments(1);
 
         mgSize.insertIntoCollection(
                 COLLECTION,
@@ -419,10 +420,10 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
 
         mg.withAwaitMs(200);
 
-        Throwable exception = assertThrows(AssertionError.class, () ->
+        Throwable exception = assertThrows(ConditionTimeoutException.class, () ->
                 mg.grabDocumentsFromCollection(COLLECTION));
 
-        assertEquals(String.format("Expected collection '%s' to be not empty, but got no documents within 200 milliseconds", COLLECTION),
+        assertEquals(String.format("No documents were received from collection '%s' within 200 milliseconds", COLLECTION),
                 exception.getMessage());
 
     }

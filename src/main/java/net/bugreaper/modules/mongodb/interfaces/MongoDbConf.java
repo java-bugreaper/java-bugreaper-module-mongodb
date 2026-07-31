@@ -18,16 +18,14 @@ public interface MongoDbConf {
     MongoDb setAwaitMs(int awaitMs);
 
     /**
-     * Configures await timeout for the next assertion or operation that uses await.
+     * Sets a custom await timeout for the next assertion or operation that use await.
      *
-     * <p>After execution, the await timeout is reset to the global value configured by
-     * {@link #setAwaitMs(int)}.</p>
-     *
-     * <p>The global await timeout is ignored for this operation.</p>
+     * <p>After the operation is completed, the timeout is reset to the global value
+     * configured by {@link #setAwaitMs(int)}.</p>
      *
      * @param awaitMs await timeout in milliseconds
      * @return this instance for method chaining
-     * @throws IllegalArgumentException if the provided timeout is invalid
+     * @throws IllegalArgumentException if the timeout is invalid
      */
     MongoDb withAwaitMs(int awaitMs);
 
@@ -38,7 +36,7 @@ public interface MongoDbConf {
      * @return this instance for method chaining
      * @throws IllegalArgumentException if {@code maxLastRecords} is less than 1
      */
-    MongoDb setMaxLastRecords(int maxLastRecords);
+    MongoDb setMaxLastDocuments(int maxLastRecords);
 
     /**
      * Configures the directory in resources containing collection templates.

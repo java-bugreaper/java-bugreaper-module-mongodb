@@ -13,8 +13,8 @@ https://bugreaper.net/
 [![GitLab Latest Release](https://gitlab.com/bug-reaper/java-bugreaper-module-mongodb/-/badges/release.svg)](https://gitlab.com/bug-reaper/java-bugreaper-module-mongodb/-/releases)
 [![Maven Latest Release](https://img.shields.io/maven-central/v/net.bugreaper/module-mongodb)](https://mvnrepository.com/artifact/net.bugreaper/module-mongodb)
 
-Is part of the BugReaper JAVA test helper framework that simplifies Mongo-DB interaction in automated tests.
-It provides easy configuration, convenient APIs for working with Mongo data, and built-in assertions,
+Is part of the BugReaper JAVA test helper framework that simplifies MongoDB interaction in automated tests.
+It provides easy configuration, convenient APIs for working with MongoDB data, and built-in assertions,
 allowing you to write readable and maintainable tests with minimal boilerplate.
 
 
@@ -33,7 +33,8 @@ allowing you to write readable and maintainable tests with minimal boilerplate.
 
 ### Tested with:
 
-    mongo:8.2.7
+    mongo:7.0.39
+    mongo:8.3.7
 
 ## Real examples here:
 - ### [Report-mongodb](https://bug-reaper.gitlab.io/java-bugreaper-sandbox/#behaviors)

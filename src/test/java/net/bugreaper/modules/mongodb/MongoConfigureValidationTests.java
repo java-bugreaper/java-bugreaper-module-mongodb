@@ -42,11 +42,11 @@ class MongoConfigureValidationTests extends MongoContainerSetup {
 
 
         Throwable exception = assertThrows(IllegalArgumentException.class, () ->
-                test.setMaxLastRecords(0));
+                test.setMaxLastDocuments(0));
 
         assertThat(
                 exception.getMessage(),
-                StringContains.containsString("maxLastRecords too small (can`t bee less 1)"));
+                StringContains.containsString("maxLastDocuments too small (can`t bee less 1)"));
     }
 
     @Test

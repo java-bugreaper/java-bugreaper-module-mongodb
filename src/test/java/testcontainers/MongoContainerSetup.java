@@ -10,8 +10,12 @@ import java.util.Objects;
 
 public abstract class MongoContainerSetup {
 
+    private static final String STABLE_VERSION = "mongo:7.0.39";//minimum 4.4
+    private static final String LATEST_VERSION = "mongo:8.3.7";
 
-    protected static final MongoDBContainer MONGO_CONTAINER = new MongoDBContainer("mongo:8.2.7")
+    private static final String DOCKER_IMAGE = resolveDockerImage();
+
+    protected static final MongoDBContainer MONGO_CONTAINER = new MongoDBContainer(DOCKER_IMAGE)
             .withExposedPorts(27017)
             .withCreateContainerCmdModifier(cmd -> Objects.requireNonNull(cmd.getHostConfig()).withPortBindings(
                     new PortBinding(Ports.Binding.bindPort(27017), new ExposedPort(27017))
@@ -21,9 +25,27 @@ public abstract class MongoContainerSetup {
 
     public static String expectedUrl;
 
+
     static {
-        MONGO_CONTAINER.start();
+        System.out.printf("""
+                \u001B[32m
+                ============================================
+                >>> TESTS RUNNING ON ON DOCKER IMAGE: %s <<<
+                ============================================
+                \u001B[0m
+                %n""", DOCKER_IMAGE);
         getCi();
+        MONGO_CONTAINER.start();
+    }
+
+    private static String resolveDockerImage() {
+        String dockerVersion = System.getProperty("dockerTestVersion");
+
+        if ("latest".equalsIgnoreCase(dockerVersion)) {
+            return LATEST_VERSION;
+        }
+
+        return STABLE_VERSION;
     }
 
     static void getCi() {
