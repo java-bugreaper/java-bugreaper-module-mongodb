@@ -49,7 +49,7 @@ repositories {
 
 dependencies {
     api 'net.bugreaper:core:1.4.3'
-    api 'org.mongodb:mongodb-driver-sync:5.1.0'
+    api 'org.mongodb:mongodb-driver-sync:5.9.1' // support >=4.4
 
     testImplementation "org.testcontainers:testcontainers-mongodb:2.0.5"
 
@@ -64,6 +64,7 @@ test {
     testLogging {
         events("PASSED", "FAILED", "SKIPPED")
         exceptionFormat = "full"
+        showStandardStreams = true
 
     }
     finalizedBy jacocoTestReport

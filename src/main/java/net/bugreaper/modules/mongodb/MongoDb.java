@@ -17,7 +17,7 @@ import static net.bugreaper.core.allurereporter.AllureReporter.attachCanBeNull;
 /**
  * MongoDB helper that provides a common API for operating with MongoDB.
  *
- * <p>Recommended to use one instance:
+ * <p>It is recommended to use a single instance:
  * {@code MongoDb mongo = MongoDb.getInstance();}
  * </p>
  *
@@ -36,7 +36,10 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
      */
     private final ThreadLocal<Integer> specificAwaitMs = ThreadLocal.withInitial(() -> 0);
 
-
+    /**
+     * @param connectionString MongoDB's connection string
+     * @param dbName database name
+     */
     public MongoDb(String connectionString, String dbName) {
         super(connectionString, dbName);
     }
@@ -46,8 +49,10 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
      * <p>
      * This implementation is thread-safe using method-level synchronization.
      *
-     * @return the singleton instance of {@link MongoDb}
+     * @return the shared instance of {@link MongoDb}
      * @see #MongoDb() config setup
+     *
+     * @throws IllegalArgumentException if the configuration contains invalid values
      */
     public static synchronized MongoDb getInstance() {
         if (instance == null) {
@@ -91,7 +96,7 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
         }
         Object maxDoc = YamlUtils.getValueByPath("modules.mongodb.documents-max-count", true);
         if (maxDoc instanceof Number number) {
-            setMaxLastRecords(number.intValue());
+            setMaxLastDocuments(number.intValue());
         }
 
     }
@@ -117,11 +122,11 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
     }
 
     @Override
-    public MongoDb setMaxLastRecords(int maxLastRecords) {
-        if (maxLastRecords < 1) {
-            throw new IllegalArgumentException("maxLastRecords too small (can`t bee less 1)");
+    public MongoDb setMaxLastDocuments(int maxLastDocuments) {
+        if (maxLastDocuments < 1) {
+            throw new IllegalArgumentException("maxLastDocuments too small (can`t bee less 1)");
         }
-        this.maxLastRecords = maxLastRecords;
+        this.maxLastDocuments = maxLastDocuments;
         return this;
     }
 
@@ -141,9 +146,9 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
                             url=%s
                             default_database=%s
                             awaitMs=%d
-                            maxLastRecords=%d
+                            maxLastDocuments=%d
                             templatesPath=%s%n""",
-                this.getClass().getSimpleName(), connectionString, defaultDatabase.getName(), awaitMs, maxLastRecords, templatesPath);
+                this.getClass().getSimpleName(), connectionString, defaultDatabase.getName(), awaitMs, maxLastDocuments, templatesPath);
 
         Log.LOGGER.info(info);
         return info;
@@ -152,19 +157,19 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
     // Interactions
 
     @Override
-    @Step("(MongoDb) Clean collection <{collectionName}>")
+    @Step("(MongoDb) Clean collection '{collectionName}'")
     public void cleanCollection(String collectionName) {
         getCollection(collectionName).deleteMany(new Document());
     }
 
     @Override
-    @Step("(MongoDb) Insert into collection <{collectionName}>")
+    @Step("(MongoDb) Insert into collection '{collectionName}'")
     public void insertIntoCollection(String collectionName, @Param(mode = HIDDEN) String json) {
         insertIntoCollectionMethod(collectionName, json);
     }
 
     @Override
-    @Step("(MongoDb) Insert into collection <{collectionName}>")
+    @Step("(MongoDb) Insert into collection '{collectionName}'")
     public void insertTemplateIntoCollection(String collectionName, String providedJson) {
         insertIntoCollectionTemplateMethod(collectionName, providedJson);
     }
@@ -179,7 +184,7 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
     }
 
     @Override
-    @Step("(MongoDb) Grab documents from collection: {collectionName}")
+    @Step("(MongoDb) Grab documents from collection '{collectionName}'")
     public AssertableStringList grabDocumentsFromCollection(String collectionName) {
         return grabDocumentsFromCollectionMethod(collectionName, await());
     }
@@ -187,38 +192,38 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
     // Asserts
 
     @Override
-    @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has exactly {expectedCount} documents")
+    @Step("(MongoDb)[ASSERT] Collection: '{collectionName}' has exactly <{expectedCount}> documents")
     public void seeDocumentsCountInCollectionExactly(String collectionName, int expectedCount) {
         seeRecordsCountInCollectionExactlyMethod(collectionName, expectedCount, await());
     }
 
     @Override
-    @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has greater than {minCount} documents")
+    @Step("(MongoDb)[ASSERT] Collection: '{collectionName}' has greater than <{minCount}> documents")
     public void seeDocumentsCountInCollectionIsGreaterThan(String collectionName, int minCount) {
         seeRecordsCountInCollectionIsGreaterThanMethod(collectionName, minCount, await());
     }
 
     @Override
-    @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> is not empty")
+    @Step("(MongoDb)[ASSERT] Collection: '{collectionName}' is not empty")
     public void seeCollectionIsEmpty(String collectionName) {
         seeCollectionIsEmptyMethod(collectionName, await());
     }
 
     @Override
-    @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> is empty")
+    @Step("(MongoDb)[ASSERT] Collection: '{collectionName}' is empty")
     public void seeCollectionIsNotEmpty(String collectionName) {
         seeCollectionIsNotEmptyMethod(collectionName, await());
     }
 
     @Override
-    @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has a document CONTAINS JSON")
+    @Step("(MongoDb)[ASSERT] Collection: '{collectionName}' has a document CONTAINS expected JSON")
     public void seeDocumentPartExistsInCollection(String collectionName, @Param(mode = HIDDEN) String json) {
         attachCanBeNull("Expected part:", json);
         assertRecordExists(collectionName, json, false, await());
     }
 
     @Override
-    @Step("(MongoDb)[ASSERT] Collection: <{collectionName}> has a document EQUAL to JSON")
+    @Step("(MongoDb)[ASSERT] Collection: '{collectionName}' has a document EQUALS expected JSON")
     public void seeDocumentExistsInCollection(String collectionName, @Param(mode = HIDDEN) String json) {
         attachCanBeNull("Expected:", json);
         assertRecordExists(collectionName, json, true, await());

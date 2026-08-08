@@ -2,6 +2,7 @@ package net.bugreaper.modules.mongodb.interfaces;
 
 import net.bugreaper.core.assertable.AssertableStringList;
 import net.bugreaper.core.mappers.JsonMerge;
+import org.awaitility.core.ConditionTimeoutException;
 
 /**
  * Interface defines methods for facilitating helper interactions.
@@ -80,7 +81,7 @@ public interface MongoDbInter {
      *
      * @param collectionName collection name
      * @return {@link AssertableStringList} containing the grabbed documents
-     * @throws AssertionError if the collection is empty
+     * @throws ConditionTimeoutException if the collection is empty until the await timeout expires
      *
      *                        <p> EXAMPLE:
      *                        {@code grabDocumentsFromCollection("my_collection").seeListHasExactlyCount(4); }

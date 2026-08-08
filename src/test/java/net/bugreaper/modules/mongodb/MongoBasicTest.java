@@ -309,7 +309,7 @@ class MongoBasicTest extends MongoContainerSetup {
                         {"name:like": "An", "age:<": 26}""");
 
         assertEquals(
-                String.format("[[INFO] Documents grabbed from collection <%s>: 2]", COLLECTION),
+                String.format("[[INFO] Documents grabbed from collection '%s': 2]", COLLECTION),
                 logWatcher.getLoggedEvents(Level.INFO).toString());
 
 
@@ -319,7 +319,7 @@ class MongoBasicTest extends MongoContainerSetup {
     @Order(1)
     void testCheckRecordsLog() {
 
-        MongoDb mgSize = getMongo().setMaxLastRecords(2);
+        MongoDb mgSize = getMongo().setMaxLastDocuments(2);
 
         mgSize.insertIntoCollection(
                 COLLECTION,"""
@@ -385,12 +385,12 @@ class MongoBasicTest extends MongoContainerSetup {
         AllureAssert.assertThat(result)
 
 
-                .hasStep("(MongoDb)[ASSERT] Collection: <users> has a document EQUAL to JSON")
+                .hasStep("(MongoDb)[ASSERT] Collection: 'users' has a document EQUALS expected JSON")
                 .hasAttachment("Expected:", """
                        {"name": "Anna", "age": 25}""")
 
 
-                .hasStep("(MongoDb)[ASSERT] Collection: <users> has a document CONTAINS JSON")
+                .hasStep("(MongoDb)[ASSERT] Collection: 'users' has a document CONTAINS expected JSON")
                 .hasAttachment("Expected part:", """
                         {"age": 26}""")
                 .hasAttachment("Differences:", """
@@ -418,7 +418,7 @@ class MongoBasicTest extends MongoContainerSetup {
                         
                         ]""")
 
-                .hasStep("(MongoDb) Grab documents from collection: users")
+                .hasStep("(MongoDb) Grab documents from collection 'users'")
                 .hasAttachment("Documents(2) list:");
     }
 
@@ -451,7 +451,7 @@ class MongoBasicTest extends MongoContainerSetup {
                             url=%s
                             default_database=test_db
                             awaitMs=2000
-                            maxLastRecords=50
+                            maxLastDocuments=50
                             templatesPath=templates/mongodb/
                         """, expectedUrl),
                 mg.getConfigSummary());
@@ -467,7 +467,7 @@ class MongoBasicTest extends MongoContainerSetup {
                             url=%s
                             default_database=test_db
                             awaitMs=800
-                            maxLastRecords=15
+                            maxLastDocuments=15
                             templatesPath=templates/mongodb/
                         """, expectedUrl),
                 mongo.getConfigSummary());
@@ -587,7 +587,7 @@ class MongoBasicTest extends MongoContainerSetup {
                             url=%s
                             default_database=test_db
                             awaitMs=2000
-                            maxLastRecords=50
+                            maxLastDocuments=50
                             templatesPath=templates/new-mongo/
                         """, expectedUrl),
                 mgCustom.getConfigSummary());
