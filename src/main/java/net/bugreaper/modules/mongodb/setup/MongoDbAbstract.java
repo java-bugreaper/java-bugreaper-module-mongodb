@@ -27,13 +27,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import static com.mongodb.client.model.Sorts.descending;
 import static net.bugreaper.core.allurereporter.AllureReporter.attachCanBeNull;
 import static net.bugreaper.core.allurereporter.AllureReporter.attachFromList;
-import static net.bugreaper.core.assertions.Asserts.assertGreaterThanExpected;
-import static net.bugreaper.core.assertions.Asserts.assertIntEquals;
 import static net.bugreaper.core.filereaders.FileReader.readJsonFromFile;
 import static net.bugreaper.core.mappers.JsonMerge.mergeJsonDeep;
 import static net.bugreaper.core.mappers.StringMappers.formatMilliseconds;
 import static net.bugreaper.core.mappers.StringMappers.listToString;
-import static net.bugreaper.core.utils.AwaitUtils.awaitCustom;
+import static net.bugreaper.core.utils.AwaitUtils.*;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 @SuppressWarnings("squid:S5960")
@@ -45,9 +43,14 @@ public abstract class MongoDbAbstract {
     protected MongoDatabase defaultDatabase;
 
     /**
-     * default ms await in tests
+     * Default await timeout for tests, in milliseconds.
      */
     protected volatile int awaitMs = 2000;
+
+    /**
+     * Default await polling interval in milliseconds for tests.
+     */
+    protected volatile int awaitPollInterval = 100;
 
     /**
      * Default pagination limit for retrieving the N most recent documents from the end of a collection.
@@ -57,9 +60,14 @@ public abstract class MongoDbAbstract {
     protected volatile int maxLastDocuments = 50;
 
     /**
-     * default templates path for insert
+     * Default templates path for insert
      */
     protected volatile String templatesPath = "templates/mongodb/";
+
+    private static final String SUBJECT = "documents";
+
+    private static final String CONTAINER = "collection";
+
 
     protected MongoDbAbstract(String connectionString, String dbName) {
 
@@ -162,7 +170,7 @@ public abstract class MongoDbAbstract {
                 new AtomicInteger();
 
         try {
-            awaitCustom(providedAwaitMs).until(() -> {
+            awaitCustom(providedAwaitMs, awaitPollInterval).until(() -> {
 
                 List<String> errors = new ArrayList<>();
 
@@ -285,48 +293,20 @@ public abstract class MongoDbAbstract {
     }
 
     protected void seeRecordsCountInCollectionExactlyMethod(String collectionName, int expectedCount, int providedAwaitMs) {
-
-        try {
-            awaitCustom(providedAwaitMs).untilAsserted(() ->
-                    assertIntEquals(expectedCount, getRecordsCountInCollectionMethod(collectionName)));
-
-        } catch (ConditionTimeoutException e) {
-            throw new AssertionError(
-                    "Expected EXACTLY <%d> documents in collection '%s', but got <%d> within %s"
-                            .formatted(expectedCount, collectionName, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(providedAwaitMs)));
-        }
-
+        awaitEquals(expectedCount, () -> getRecordsCountInCollectionMethod(collectionName), providedAwaitMs, awaitPollInterval, SUBJECT, CONTAINER, collectionName);
     }
 
-    protected void seeRecordsCountInCollectionIsGreaterThanMethod(String collectionName, int expectedCount, int providedAwaitMs) {
-
-        try {
-            awaitCustom(providedAwaitMs).untilAsserted(() ->
-                    assertGreaterThanExpected(expectedCount, getRecordsCountInCollectionMethod(collectionName)));
-        } catch (ConditionTimeoutException e) {
-            throw new AssertionError(
-                    "Expected the number of documents in collection '%s' to be GREATER than <%d>, but got <%d> within %s"
-                            .formatted(collectionName, expectedCount, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(providedAwaitMs)));
-        }
+    protected void seeRecordsCountInCollectionIsGreaterThanMethod(String collectionName, int minCount, int providedAwaitMs) {
+        awaitGraterThan(minCount, () -> getRecordsCountInCollectionMethod(collectionName), providedAwaitMs, awaitPollInterval, SUBJECT, CONTAINER, collectionName);
     }
 
     protected void seeCollectionIsEmptyMethod(String collectionName, int providedAwaitMs) {
-
-        try {
-            awaitCustom(providedAwaitMs).untilAsserted(() ->
-                    assertIntEquals(0, getRecordsCountInCollectionMethod(collectionName)));
-
-        } catch (ConditionTimeoutException e) {
-            throw new AssertionError(
-                    "Expected collection '%s' to be empty, but got <%d> documents within %s"
-                            .formatted(collectionName, getRecordsCountInCollectionMethod(collectionName), formatMilliseconds(providedAwaitMs)));
-        }
-
+        awaitIsEmpty(() -> getRecordsCountInCollectionMethod(collectionName), providedAwaitMs, awaitPollInterval, SUBJECT, CONTAINER, collectionName);
     }
 
     private void waitForFirsDocument(String collectionName, int providedAwaitMs) {
         try {
-            awaitCustom(providedAwaitMs).untilAsserted(() ->
+            awaitCustom(providedAwaitMs, awaitPollInterval).untilAsserted(() ->
                     assertNotEquals(0, getRecordsCountInCollectionMethod(collectionName)));
         } catch (ConditionTimeoutException e) {
             throw new ConditionTimeoutException(
@@ -336,16 +316,7 @@ public abstract class MongoDbAbstract {
     }
 
     protected void seeCollectionIsNotEmptyMethod(String collectionName, int providedAwaitMs) {
-
-        try {
-            awaitCustom(providedAwaitMs).untilAsserted(() ->
-                    assertNotEquals(0, getRecordsCountInCollectionMethod(collectionName)));
-        } catch (ConditionTimeoutException e) {
-            throw new AssertionError(
-                    "Expected collection '%s' to be not empty, but got no documents within %s"
-                            .formatted(collectionName, formatMilliseconds(providedAwaitMs)));
-        }
-
+        awaitIsNotEmpty(() -> getRecordsCountInCollectionMethod(collectionName), providedAwaitMs, awaitPollInterval, SUBJECT, CONTAINER, collectionName);
     }
 
 
