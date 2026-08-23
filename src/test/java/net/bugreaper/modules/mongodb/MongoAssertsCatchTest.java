@@ -58,14 +58,14 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
                 mg.withAwaitMs(200).seeCollectionIsNotEmpty(COLLECTION));
 
         assertEquals(
-                String.format("Expected collection '%s' to be not empty, but got no documents within 200 milliseconds", COLLECTION),
+                String.format("Expected collection '%s' to be NOT EMPTY, but got no documents within 200 milliseconds", COLLECTION),
                 exception1.getMessage());
 
         Throwable exception2 = assertThrows(AssertionError.class, () ->
                 mg.seeCollectionIsNotEmpty(COLLECTION));
 
         assertEquals(
-                String.format("Expected collection '%s' to be not empty, but got no documents within 400 milliseconds", COLLECTION),
+                String.format("Expected collection '%s' to be NOT EMPTY, but got no documents within 400 milliseconds", COLLECTION),
                 exception2.getMessage());
     }
 
@@ -85,7 +85,7 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
 
 
         assertEquals(
-                String.format("Expected collection '%s' to be empty, but got <1> documents within 200 milliseconds", COLLECTION),
+                String.format("Expected collection '%s' to be EMPTY, but got <1> documents within 200 milliseconds", COLLECTION),
                 exception1.getMessage());
 
         Throwable exception2 = assertThrows(AssertionError.class, () ->
@@ -93,7 +93,7 @@ class MongoAssertsCatchTest extends MongoContainerSetup {
 
 
         assertEquals(
-                String.format("Expected collection '%s' to be empty, but got <1> documents within 400 milliseconds", COLLECTION),
+                String.format("Expected collection '%s' to be EMPTY, but got <1> documents within 400 milliseconds", COLLECTION),
                 exception2.getMessage());
     }
 

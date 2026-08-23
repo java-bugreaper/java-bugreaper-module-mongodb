@@ -451,6 +451,7 @@ class MongoBasicTest extends MongoContainerSetup {
                             url=%s
                             default_database=test_db
                             awaitMs=2000
+                            awaitPollInterval=100
                             maxLastDocuments=50
                             templatesPath=templates/mongodb/
                         """, expectedUrl),
@@ -467,6 +468,7 @@ class MongoBasicTest extends MongoContainerSetup {
                             url=%s
                             default_database=test_db
                             awaitMs=800
+                            awaitPollInterval=200
                             maxLastDocuments=15
                             templatesPath=templates/mongodb/
                         """, expectedUrl),
@@ -587,6 +589,7 @@ class MongoBasicTest extends MongoContainerSetup {
                             url=%s
                             default_database=test_db
                             awaitMs=2000
+                            awaitPollInterval=100
                             maxLastDocuments=50
                             templatesPath=templates/new-mongo/
                         """, expectedUrl),

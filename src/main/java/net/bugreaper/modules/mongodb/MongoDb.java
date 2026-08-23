@@ -94,6 +94,10 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
         if (awaitVal instanceof Number number) {
             setAwaitMs(number.intValue());
         }
+        Object awaitPollIntervalVal = YamlUtils.getValueByPath("modules.mongodb.await-poll-interval", true);
+        if (awaitPollIntervalVal instanceof Number number) {
+            this.awaitPollInterval = number.intValue();
+        }
         Object maxDoc = YamlUtils.getValueByPath("modules.mongodb.documents-max-count", true);
         if (maxDoc instanceof Number number) {
             setMaxLastDocuments(number.intValue());
@@ -146,9 +150,11 @@ public class MongoDb extends MongoDbAbstract implements MongoDbInter, MongoDbAss
                             url=%s
                             default_database=%s
                             awaitMs=%d
+                            awaitPollInterval=%d
                             maxLastDocuments=%d
                             templatesPath=%s%n""",
-                this.getClass().getSimpleName(), connectionString, defaultDatabase.getName(), awaitMs, maxLastDocuments, templatesPath);
+                this.getClass().getSimpleName(), connectionString, defaultDatabase.getName(),
+                awaitMs, awaitPollInterval, maxLastDocuments, templatesPath);
 
         Log.LOGGER.info(info);
         return info;

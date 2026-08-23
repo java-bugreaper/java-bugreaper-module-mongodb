@@ -8,7 +8,7 @@ plugins {
 }
 
 
-description = 'BugReaper module for interaction with MongoDB'
+description = 'Is part of the BugReaper JAVA test helper framework that simplifies MongoDB interaction in automated tests.'
 
 group = 'net.bugreaper'
 version = properties["VERSION_NAME"].toString()
@@ -48,8 +48,8 @@ repositories {
 }
 
 dependencies {
-    api 'net.bugreaper:core:1.4.3'
-    api 'org.mongodb:mongodb-driver-sync:5.9.1' // support >=4.4
+    api 'net.bugreaper:core:1.4.4'
+    api 'org.mongodb:mongodb-driver-sync:5.10.0' // support >=4.4
 
     testImplementation "org.testcontainers:testcontainers-mongodb:2.0.5"
 

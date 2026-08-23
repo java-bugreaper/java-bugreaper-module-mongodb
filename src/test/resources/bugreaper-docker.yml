@@ -4,3 +4,4 @@ modules:
     database: test_db
     await: 800 # optional
     documents-max-count: 15 # optional
+    await-poll-interval: 200 # optional
